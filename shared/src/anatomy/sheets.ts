@@ -1,16 +1,19 @@
 /**
- * Horse: superficial (and some deeper) muscles as surface sheets.
- * Coordinates are body-surface (u, v) for the LEFT side – see SheetRecipe.
+ * Superficial (and some deeper) muscles as surface sheets, shared by all species.
+ * Coordinates are body-surface (u, v) for the LEFT side – see SheetRecipe – so the
+ * same map adapts to each rig's proportions (the surface parts are normalised):
  *   trunk: v 0 = chest front … 1 = buttock; u 0 dorsal, 0.25 flank, 0.5 belly
  *   neck:  v 0 = base … 1 = head;           u 0 crest, 0.25 side, 0.5 throat
  *   head:  v 0 = poll … 1 = nose;           u 0 forehead, 0.25 cheek, 0.5 jaw
  *   limbs: v 0 = inside trunk … 1 = coffin; u 0 cranial, 0.25 lateral, 0.5 caudal
+ * The layout follows the horse écorché; muscles absent in a species are simply
+ * filtered out by the catalogue.
  */
 import type { GeometryRecipe, SheetRecipe } from '../types.ts';
 
 const sheet = (part: SheetRecipe['part'], corners: SheetRecipe['corners'], bulge: number, extra: Partial<SheetRecipe> = {}): SheetRecipe => ({ type: 'sheet', part, corners, bulge, ...extra });
 
-export const HORSE_SHEETS: Record<string, GeometryRecipe | GeometryRecipe[]> = {
+export const QUADRUPED_SHEETS: Record<string, GeometryRecipe | GeometryRecipe[]> = {
   // ------------------------------------------------------------ head
   m_masseter: sheet('head', [[0.17, 0.64], [0.18, 0.38], [0.45, 0.25], [0.44, 0.55]], 0.028, { layer: 1 }),
   m_temporalis: sheet('head', [[0.08, 0.1], [0.2, 0.13], [0.2, 0.3], [0.07, 0.3]], 0.012, { layer: 1 }),

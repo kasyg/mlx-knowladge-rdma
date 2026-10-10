@@ -64,6 +64,8 @@ export function AtlasStage() {
 
   // structure picking (hover + tap) is handled in CameraRig; here we only run per-frame updates
   const ray = useMemo(() => new THREE.Raycaster(), []);
+  // only a sheet-based musculature (one that tiles the body) is allowed to hide the bones beneath it
+  const sheetMuscles = useMemo(() => !!model && model.instances.some((inst) => (Array.isArray(inst.def.geometry) ? inst.def.geometry : [inst.def.geometry]).some((g) => g.type === 'sheet')), [model]);
   void ray;
   void camera;
   void gl;
@@ -103,7 +105,7 @@ export function AtlasStage() {
     atlasRuntime.musclesCur += (musclesTarget - atlasRuntime.musclesCur) * k;
     if (Math.abs(musclesTarget - atlasRuntime.musclesCur) < 0.004) atlasRuntime.musclesCur = musclesTarget;
     // intact muscles hide the bones and cartilage that lie beneath them (axial skeleton, girdles, joints)
-    const musclesCover = musclesTarget === 0 && atlasRuntime.musclesCur < 0.03;
+    const musclesCover = sheetMuscles && musclesTarget === 0 && atlasRuntime.musclesCur < 0.03;
     for (const inst of m.instances) {
       const g = inst.group;
       let target: number;

@@ -4,10 +4,13 @@
  * cranial = -x, dorsal = +y, left = +z.
  */
 import type { SpeciesDef, SpeciesId } from './types.ts';
-import { HORSE_SHEETS } from './anatomy/sheets_horse.ts';
+import { QUADRUPED_SHEETS } from './anatomy/sheets.ts';
+
+/** sheet-based musculature (geometry overrides keyed by structure id), shared by all species */
+const SHEET_OVERRIDES: SpeciesDef['structureOverrides'] = Object.fromEntries(Object.entries(QUADRUPED_SHEETS).map(([id, geometry]) => [id, { geometry }]));
 
 const horse: SpeciesDef = {
-  structureOverrides: Object.fromEntries(Object.entries(HORSE_SHEETS).map(([id, geometry]) => [id, { geometry }])),
+  structureOverrides: SHEET_OVERRIDES,
   meta: {
     id: 'horse',
     names: { la: 'Equus ferus caballus', cs: 'Kůň domácí', en: 'Horse' },
@@ -116,6 +119,7 @@ const horse: SpeciesDef = {
 };
 
 const cow: SpeciesDef = {
+  structureOverrides: SHEET_OVERRIDES,
   meta: {
     id: 'cow',
     names: { la: 'Bos taurus', cs: 'Skot domácí (kráva)', en: 'Cattle (cow)' },
@@ -227,6 +231,7 @@ const cow: SpeciesDef = {
 };
 
 const goat: SpeciesDef = {
+  structureOverrides: SHEET_OVERRIDES,
   meta: {
     id: 'goat',
     names: { la: 'Capra aegagrus hircus', cs: 'Koza domácí', en: 'Goat' },
@@ -337,6 +342,7 @@ const goat: SpeciesDef = {
 };
 
 const dog: SpeciesDef = {
+  structureOverrides: SHEET_OVERRIDES,
   meta: {
     id: 'dog',
     names: { la: 'Canis lupus familiaris', cs: 'Pes domácí', en: 'Dog' },
@@ -444,6 +450,7 @@ const dog: SpeciesDef = {
 };
 
 const cat: SpeciesDef = {
+  structureOverrides: SHEET_OVERRIDES,
   meta: {
     id: 'cat',
     names: { la: 'Felis catus', cs: 'Kočka domácí', en: 'Cat' },
