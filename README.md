@@ -51,6 +51,15 @@ docs/     screenshoty z ověření
   latissimus dorsi, serratus ventralis, obliquus externus, gluteální svaly, triceps, extenzory a flexory předloktí, biceps femoris,
   semitendinosus, gastrocnemius, žvýkací a mimické svaly…); hluboké svaly bez plátu zůstávají vřetenovité „sweep“ geometrie mezi
   začátkem a úponem. Dále šlachy (zploštělé šlachy ohýbačů a mezikostního vazu), vazy, cévy (hladké křivky přes klouby), nervy, orgány.
+- kůň je zpracován do detailu: samostatné zápěstní (os carpi radiale, intermedium, ulnare, accessorium, C2–C4) a zánártní kosti
+  (talus, calcaneus, os tarsi centrale, T1+2, T3, T4), bodcové kosti MC/MT II a IV, tvarované konce dlouhých kostí (hlavice, chocholíky,
+  kondyly, kladky, kloubní plochy) s tenkou kloubní chrupavkou, zuby po typech (řezáky, špičáky, třenové zuby, stoličky s rezervní
+  korunkou), kompletní opěrný aparát (horní a dolní spona, přímý/šikmé/zkřížené distální sezamské vazy, prstencové vazy, postranní vazy
+  kloubů prstu, vaz impar, závěs střelkové kosti, dlouhý plantární vaz, tři čéškové vazy se zámkem kolena, přídatný vaz hlavice stehenní
+  kosti, lacertus fibrosus, cuneální šlacha), cévy hlavy, hrudníku, pánve a končetin, nervy včetně míst nervových bloků (dlaňové a
+  plantární nervy, prstní nervy, podočnicový, bradový, ušně-víčkový), zvratný hrtanový nerv, bloudivě-sympatický kmen, hluboké svaly
+  (křídlové, pásové, mnohoklaný, hýžďový přídatný, ucpávající, hlavy čtyřhlavého svalu, ocasní svaly) a velký tračník po částech
+  (pravý/levý ventrální, sternální, pánevní a bránicová klička, levý/pravý dorzální, příčný, tenký tračník).
 - vrstvy se navzájem zakrývají: neporušená kůže skryje vše pod sebou, neporušená svalová vrstva skryje osovou kostru, pletence,
   proximální dlouhé kosti, zuby a kloubní chrupavky (příznak `covered` ve `shared/src/anatomy/skeleton.ts`).
 

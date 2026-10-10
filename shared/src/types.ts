@@ -119,6 +119,8 @@ export interface EllipsoidRecipe {
   size: [number, number, number];
   rot?: [number, number, number];
   detail?: number;
+  /** superellipsoid exponent: 2 = ellipsoid, 3 = rounded block (short bones) */
+  n?: number;
 }
 
 export interface LoftSection {

@@ -169,9 +169,17 @@ export function gridGeometry(rows: number, cols: number, fn: (u: number, v: numb
   return g;
 }
 
-export function ellipsoidGeometry(size: V3, detail = 24): THREE.BufferGeometry {
+/** ellipsoid, or for n > 2 a superellipsoid (rounded block) – the shape of short bones such as the carpal bones */
+export function ellipsoidGeometry(size: V3, detail = 24, n = 2): THREE.BufferGeometry {
   const g = new THREE.SphereGeometry(1, detail, Math.max(8, Math.round(detail * 0.7)));
+  if (n !== 2) {
+    const pos = g.attributes.position as THREE.BufferAttribute;
+    const e = 2 / n;
+    const f = (v: number) => Math.sign(v) * Math.pow(Math.abs(v), e);
+    for (let i = 0; i < pos.count; i++) pos.setXYZ(i, f(pos.getX(i)), f(pos.getY(i)), f(pos.getZ(i)));
+  }
   g.scale(size[0], size[1], size[2]);
+  if (n !== 2) g.computeVertexNormals();
   g.computeBoundingBox();
   return g;
 }

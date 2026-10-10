@@ -94,8 +94,8 @@ export function sweepPart(points: V3[], radius: (t: number) => number, o: { aspe
   return { geometry: g, material: o.material ?? 'default', pathLength: g.length };
 }
 
-export function ellPart(at: V3, size: V3, o: { rot?: V3; material?: MaterialKey; detail?: number } = {}): Part {
-  const g = ellipsoidGeometry(size, o.detail ?? 20);
+export function ellPart(at: V3, size: V3, o: { rot?: V3; material?: MaterialKey; detail?: number; n?: number } = {}): Part {
+  const g = ellipsoidGeometry(size, o.detail ?? 20, o.n ?? 2);
   if (o.rot) g.rotateX(o.rot[0]), g.rotateY(o.rot[1]), g.rotateZ(o.rot[2]);
   g.translate(at[0], at[1], at[2]);
   return { geometry: g, material: o.material ?? 'default' };
@@ -158,7 +158,7 @@ function buildEllipsoid(r: EllipsoidRecipe, ctx: BuildCtx): Part {
   const H = ctx.H;
   const at = ctx.resolve(r.at);
   const size: V3 = [r.size[0] * H, r.size[1] * H, r.size[2] * H];
-  return ellPart(at, size, { rot: r.rot ? [r.rot[0], r.rot[1], r.rot[2] * ctx.sgn] : undefined, detail: r.detail });
+  return ellPart(at, size, { rot: r.rot ? [r.rot[0], r.rot[1], r.rot[2] * ctx.sgn] : undefined, detail: r.detail, n: r.n });
 }
 
 function buildLoft(r: LoftRecipe, ctx: BuildCtx): Part {
@@ -509,44 +509,58 @@ function buildSkull(r: SpecialRecipe, ctx: BuildCtx): Part[] {
         material: 'default',
       });
     }
-  } else if (r.part === 'teeth') {
+  } else if (r.part === 'teeth' || r.part === 'incisors' || r.part === 'canines' || r.part === 'premolars' || r.part === 'molars') {
     const secTop = (t: number) => rig.head.section(t);
     const put = (t: number, upOff: number, z: number, size: V3) => {
+      // a tooth is a rounded block; the hypsodont (high-crowned) cheek teeth are tall, most of the crown buried in the jaw
       const p = add(add(hd.origin, mul(hd.dir, t * hd.length)), mul(hd.up, upOff));
-      const g = new THREE.BoxGeometry(size[0], size[1], size[2], 1, 1, 1);
+      const g = ellipsoidGeometry([size[0] / 2, size[1] / 2, size[2] / 2], 10, 3.2);
       g.translate(p[0], p[1], p[2] + z);
       parts.push({ geometry: g, material: 'tooth' });
     };
     const sp = ctx.payload.meta.id;
-    const cheekN = sp === 'cat' ? 3 : sp === 'dog' ? 5 : 6;
-    for (let i = 0; i < cheekN; i++) {
-      const t = lerp(0.5, 0.78, i / Math.max(1, cheekN - 1));
-      const sec = secTop(t);
-      const z = sec.w * k * 0.72;
-      const upperY = (sec.yOff ?? 0) - sec.h * k * 0.58;
-      const lowerY = upperY - 0.022 * H;
-      const tw = 0.016 * H, td = 0.012 * H;
-      put(t, upperY, z, [tw, 0.02 * H, td]);
-      put(t, upperY, -z, [tw, 0.02 * H, td]);
-      put(t, lowerY, z * 0.9, [tw, 0.02 * H, td]);
-      put(t, lowerY, -z * 0.9, [tw, 0.02 * H, td]);
+    const want = r.part;
+    const hypsodont = sp === 'horse' || sp === 'cow' || sp === 'goat';
+    const counts = sp === 'cat' ? { p: 3, m: 1 } : sp === 'dog' ? { p: 4, m: 2 } : { p: 3, m: 3 };
+    const cheekN = counts.p + counts.m;
+    if (want === 'teeth' || want === 'premolars' || want === 'molars') {
+      for (let i = 0; i < cheekN; i++) {
+        const isMolar = i >= counts.p;
+        if (want === 'premolars' && isMolar) continue;
+        if (want === 'molars' && !isMolar) continue;
+        const t = lerp(0.5, 0.78, i / Math.max(1, cheekN - 1));
+        const sec = secTop(t);
+        const z = sec.w * k * 0.72;
+        const upperY = (sec.yOff ?? 0) - sec.h * k * 0.58;
+        const lowerY = upperY - 0.022 * H;
+        const tw = hypsodont ? 0.017 * H : 0.014 * H, td = hypsodont ? 0.013 * H : 0.01 * H;
+        const crown = hypsodont ? 0.034 * H : 0.018 * H; // the hypsodont cheek tooth is ~8 cm long, most of it reserve crown
+        put(t, upperY + (hypsodont ? 0.006 * H : 0), z, [tw, crown, td]);
+        put(t, upperY + (hypsodont ? 0.006 * H : 0), -z, [tw, crown, td]);
+        put(t, lowerY - (hypsodont ? 0.006 * H : 0), z * 0.9, [tw, crown, td]);
+        put(t, lowerY - (hypsodont ? 0.006 * H : 0), -z * 0.9, [tw, crown, td]);
+      }
     }
-    const secN = secTop(0.92);
-    const incUpper = sp === 'cow' || sp === 'goat' ? 0 : 3;
-    for (let i = -2; i <= 2; i++) {
-      const z = i * secN.w * k * 0.28;
-      const yU = (secN.yOff ?? 0) - secN.h * k * 0.45;
-      if (incUpper) put(0.92, yU, z, [0.007 * H, 0.013 * H, 0.007 * H]);
-      put(0.91, yU - 0.015 * H, z * 0.95, [0.007 * H, 0.013 * H, 0.007 * H]);
+    if (want === 'teeth' || want === 'incisors') {
+      const secN = secTop(0.92);
+      const incUpper = sp === 'cow' || sp === 'goat' ? 0 : 3;
+      const lowerN = sp === 'cow' || sp === 'goat' ? 4 : 3; // ruminants: 3 incisors + the incisiform canine
+      for (let i = -lowerN + 1; i <= lowerN - 1; i += 1) {
+        const z = (i / 2) * secN.w * k * 0.28;
+        const yU = (secN.yOff ?? 0) - secN.h * k * 0.45;
+        if (incUpper && Math.abs(i) <= 2) put(0.92, yU, z, [0.008 * H, hypsodont ? 0.024 * H : 0.013 * H, 0.007 * H]);
+        put(0.91, yU - 0.015 * H, z * 0.95, [0.008 * H, hypsodont ? 0.024 * H : 0.013 * H, 0.007 * H]);
+      }
     }
-    if (sp === 'dog' || sp === 'cat' || sp === 'horse') {
-      const secC = secTop(0.9);
+    if ((want === 'teeth' || want === 'canines') && (sp === 'dog' || sp === 'cat' || sp === 'horse')) {
+      const secC = secTop(sp === 'horse' ? 0.86 : 0.9);
       const z = secC.w * k * 0.62;
       const y = (secC.yOff ?? 0) - secC.h * k * 0.55;
-      put(0.9, y, z, [0.009 * H, 0.026 * H, 0.009 * H]);
-      put(0.9, y, -z, [0.009 * H, 0.026 * H, 0.009 * H]);
-      put(0.905, y - 0.01 * H, z * 0.9, [0.009 * H, 0.024 * H, 0.009 * H]);
-      put(0.905, y - 0.01 * H, -z * 0.9, [0.009 * H, 0.024 * H, 0.009 * H]);
+      const t = sp === 'horse' ? 0.86 : 0.9;
+      put(t, y, z, [0.009 * H, 0.026 * H, 0.009 * H]);
+      put(t, y, -z, [0.009 * H, 0.026 * H, 0.009 * H]);
+      put(t + 0.005, y - 0.01 * H, z * 0.9, [0.009 * H, 0.024 * H, 0.009 * H]);
+      put(t + 0.005, y - 0.01 * H, -z * 0.9, [0.009 * H, 0.024 * H, 0.009 * H]);
     }
   }
   return parts;
@@ -757,7 +771,11 @@ function buildDigits(r: SpecialRecipe, ctx: BuildCtx): Part[] {
     const bot = add(l('fetlock'), [0, 0.014 * H, 0]);
     if (digits === 'hoof') {
       parts.push(sweepPart([top, lerp3(top, bot, 0.5), bot], profileFn('bone', [0.022 * H, 0.014 * H, 0.02 * H]), { radial: 12, segments: 12 }));
-      for (const off of [-0.018, 0.018]) parts.push(sweepPart([add(top, [0.012 * H, 0, sgn * off * H]), add(lerp3(top, bot, 0.68), [0.013 * H, 0, sgn * off * 0.8 * H])], profileFn('taper', [0.006 * H, 0.002 * H]), { radial: 6, segments: 8 }));
+      // proximal articular surface (flat, broad) and the distal condyle with its sagittal ridge
+      parts.push(ellPart(add(top, [0.002 * H, 0.003 * H, 0]), [0.024 * H, 0.011 * H, 0.026 * H], { detail: 14, n: 2.6 }));
+      parts.push(ellPart(add(bot, [0, -0.004 * H, 0]), [0.02 * H, 0.017 * H, 0.024 * H], { detail: 14, n: 2.2 }));
+      parts.push(ellPart(add(bot, [0.002 * H, -0.006 * H, 0]), [0.021 * H, 0.019 * H, 0.0045 * H], { detail: 12, n: 2.2 }));
+      // the splint bones (MC/MT II and IV) of the horse are structures of their own (skeleton.ts)
     } else if (digits === 'cloven') {
       parts.push(sweepPart([top, lerp3(top, bot, 0.5), bot], profileFn('bone', [0.023 * H, 0.016 * H, 0.024 * H]), { radial: 12, segments: 12, aspect: 0.8, outward: [-1, 0, 0] }));
       for (const off of [-0.012, 0.012]) parts.push(ellPart(add(bot, [0, -0.004 * H, sgn * off * H]), [0.012 * H, 0.012 * H, 0.01 * H], { detail: 10 }));
@@ -773,7 +791,7 @@ function buildDigits(r: SpecialRecipe, ctx: BuildCtx): Part[] {
       }
     }
   } else if (r.part === 'sesamoids') {
-    for (const off of [-0.012, 0.012]) parts.push(ellPart(add(l('sesamoid'), [0, 0, sgn * off * H]), [0.008 * H, 0.012 * H, 0.007 * H], { detail: 10 }));
+    for (const off of [-0.012, 0.012]) parts.push(ellPart(add(l('sesamoid'), [0, 0, sgn * off * H]), [0.008 * H, 0.013 * H, 0.0075 * H], { detail: 12, n: 2.6, rot: [0, 0, 0.35] }));
   } else if (r.part === 'phalanges') {
     const fet = l('fetlock'), past = l('pastern'), cof = l('coffin'), toe = l('toe');
     if (digits === 'cloven') {
