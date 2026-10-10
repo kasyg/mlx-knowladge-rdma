@@ -38,7 +38,8 @@ docs/     screenshoty z ověření
 
 ### Procedurální 3D modely
 
-Žádné externí modely se nestahují – každé zvíře je generováno v prohlížeči z parametrického **rigu** (`shared/src/species.ts`,
+Žádné externí modely se nestahují – každé zvíře je generováno v prohlížeči z parametrického **rigu** (kůň navíc dostává
+sochanou kostru z `tools/sculpt`, viz níže) (`shared/src/species.ts`,
 `shared/src/rig.ts`): poloha kloubů, obratlů, žeber, lebky atd. v metrech. Z něj se staví:
 
 - kůže (loft trupu, krku a hlavy, končetiny, uši, ocas, hříva, rohy, vemeno, oči, nozdry, kopyta/paznehty/tlapky) s procedurální srstí
@@ -83,6 +84,19 @@ SKETCHFAB_TOKEN=… node scripts/fetch-sketchfab.mjs https://sketchfab.com/3d-mo
 
 Procedurální kostru lze naopak vyexportovat (`window.__vetatlas.exportGroup('bones')` v konzoli prohlížeče) jako GLB,
 např. pro 3D tisk nebo úpravu v Blenderu. Komerční modely (TurboSquid, CGTrader, 3dmodels.org…) do atlasu kopírovat nelze.
+
+### Sochaná kostra koně (Blender)
+
+Kůň má místo procedurálních kostí **sochanou kostru** (`client/public/models/horse/`): každá kost je vlastní síť
+vymodelovaná skriptem v `tools/sculpt/` – anatomické primitivy (kapsle, lofty s eliptickým průřezem, ploténky, tory)
+spojené hladkým sjednocením a vyřezané jamky, rýhy, otvory a kloubní plochy; pole vzdáleností se vzorkuje po 1–3 mm,
+převede na síť (marching cubes), vyhladí a zjednoduší v Blenderu (bpy) a uloží jako GLB s kompresí Draco.
+Kosti sedí na orientačních bodech rigu, takže na ně navazují šlachy, svaly i cévy a funguje loupání vrstev i animace.
+Obsah: lebka, dolní čelist, jazylka, řezáky/špičáky/třenové zuby/stoličky, atlas, čepovec, C3–C7, T1–T18, L1–L6, kost
+křížová, 18 ocasních obratlů, meziobratlové ploténky, 18 párů žeber s chrupavkami, hrudní kost s mečovitou chrupavkou,
+lopatka, pažní kost, vřetenní a loketní kost, 7 zápěstních kostí, záprstí se dvěma bodcovými kostmi, sezamské kosti,
+tři články prstu s člunkovou kostí, pánev, stehenní kost, čéška, holenní a lýtková kost, 6 zánártních kostí,
+nárt s bodcovými kostmi a prst. Postup přegenerování je v `tools/sculpt/README.md`.
 
 ## Spuštění
 

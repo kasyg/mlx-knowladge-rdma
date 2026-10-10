@@ -1,5 +1,11 @@
 # Imported 3D models
 
+`horse/` ships the skeleton sculpted with `tools/sculpt` (Blender, signed-distance
+modelling): `skeleton.glb` with every bone as its own mesh, `cartilage.glb` with the
+intervertebral discs, costal and xiphoid cartilages, and the manifest that maps the meshes
+to the atlas structures. Rebuild it with `tools/sculpt/build.py` after changing a bone.
+The Draco decoder used for these files lives in `client/public/draco/` (three.js, MIT).
+
 Drop scanned or modelled meshes (glTF `.gltf` + `.bin` + textures, or a single `.glb`)
 into `models/<species>/<name>/` and describe them in `models/<species>/manifest.json`.
 The atlas loads the manifest when the species opens, aligns every model to the

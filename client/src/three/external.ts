@@ -11,6 +11,7 @@
  */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import type { GroupId, RegionId, SpeciesId, StructureDef } from '@shared/types';
 import { makeMaterial, uniformsOf, KIND_COLORS } from './materials.ts';
 import type { AnimalModel, StructureInstance } from './animal.ts';
@@ -74,6 +75,17 @@ export interface ExternalResult {
 }
 
 export const EXTERNAL_BASE = '/models';
+
+/** Draco-compressed meshes (the sculpted skeletons) are decoded with the decoder shipped in client/public/draco. */
+let draco: DRACOLoader | null = null;
+function dracoLoader(): DRACOLoader {
+  if (!draco) {
+    draco = new DRACOLoader();
+    draco.setDecoderPath('/draco/');
+    draco.setDecoderConfig({ type: 'wasm' });
+  }
+  return draco;
+}
 
 /** Load the manifest of a species; null when there is none (404). */
 export async function loadManifest(species: SpeciesId): Promise<ExternalManifest | null> {
@@ -177,6 +189,7 @@ function structureKey(inst: StructureInstance) {
  */
 export async function applyExternalEntry(model: AnimalModel, species: SpeciesId, entry: ExternalEntry): Promise<ExternalResult> {
   const loader = new GLTFLoader();
+  loader.setDRACOLoader(dracoLoader());
   const url = `${EXTERNAL_BASE}/${species}/${entry.file}`;
   const gltf = await loader.loadAsync(url);
   const group: GroupId = entry.group ?? 'bones';

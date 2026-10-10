@@ -7,3 +7,5 @@ docs/screenshots/tmp/
 
 # local exploration scripts
 tests/*.tmp.mjs
+__pycache__/
+.venv-sculpt/
