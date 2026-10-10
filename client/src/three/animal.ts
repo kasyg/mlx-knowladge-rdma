@@ -2,16 +2,15 @@ import * as THREE from 'three';
 import type { PointRef, RegionId, Side, SpeciesPayload, StructureDef, GroupId } from '@shared/types';
 import { buildRig, resolvePoint, pointRefNames, type Rig } from '@shared/rig';
 import { recipesOf } from '@shared/anatomy/index';
-import { buildRecipe, makeCtx, mergeParts, type MaterialKey, type Part } from './builders.ts';
+import { buildRecipe, makeCtx, mergeParts, type MaterialKey, type Part, type DynamicPart } from './builders.ts';
+import { BodySurface, type LimbPartId } from './surface.ts';
+import { muscleFiberTexture } from './fur.ts';
 import { makeMaterial, uniformsOf, KIND_COLORS, ID_COLORS, type VetUniforms } from './materials.ts';
 import { furTexture } from './fur.ts';
 import { SweepGeometry, type V3 } from './sweep.ts';
 import { segmentOfLandmark, limbOfLandmark, FORELIMB_CHAIN, HINDLIMB_CHAIN, type LimbKey, type SegmentId, type JointName } from './segments.ts';
 
-export interface DynamicPart {
-  sweep: SweepGeometry;
-  path: PointRef[];
-}
+export type { DynamicPart };
 
 export interface StructureInstance {
   key: string;
@@ -49,10 +48,11 @@ export interface AnimalModel {
   bounds: THREE.Box3;
   /** current (possibly animated) landmark position */
   landmarkNow: (name: string) => V3;
+  surface: BodySurface;
   dispose: () => void;
 }
 
-const MAT_COLORS: Record<Exclude<MaterialKey, 'default' | 'fur'>, { color: string; roughness: number; metalness?: number }> = {
+const MAT_COLORS: Record<Exclude<MaterialKey, 'default' | 'fur' | 'muscleSheet'>, { color: string; roughness: number; metalness?: number }> = {
   dark: { color: '#1c1511', roughness: 0.75 },
   eye: { color: '#120d0a', roughness: 0.12, metalness: 0.1 },
   hoof: { color: '#4a4039', roughness: 0.55 },
@@ -96,7 +96,13 @@ export async function buildAnimal(payload: SpeciesPayload, opts: BuildOptions = 
   const instances: StructureInstance[] = [];
   const byKey = new Map<string, StructureInstance>();
   const fur = furTexture(payload.rig.fur, payload.meta.id);
+  const fiber = muscleFiberTexture();
   const limbs = new Map<LimbKey, LimbPivots>();
+  const surface = new BodySurface(rig, (n) => {
+    const p = rig.landmarks[n];
+    if (!p) throw new Error(`Unknown landmark ${n}`);
+    return p;
+  });
 
   // limb pivot hierarchies
   for (const side of ['L', 'R'] as Side[]) {
@@ -168,7 +174,7 @@ export async function buildAnimal(payload: SpeciesPayload, opts: BuildOptions = 
   }
 
   function buildInstance(def: StructureDef, side: Side | null): StructureInstance {
-    const ctx = makeCtx(rig, payload, side);
+    const ctx = makeCtx(rig, payload, side, surface);
     const parts: Part[] = [];
     const dynamics: DynamicPart[] = [];
     const limbSet = new Set<LimbKey>();
@@ -176,13 +182,16 @@ export async function buildAnimal(payload: SpeciesPayload, opts: BuildOptions = 
     for (const recipe of recipesOf(def)) {
       const built = buildRecipe(recipe, ctx, soft);
       for (const p of built) {
-        if (p.dynamic) {
+        if (p.dynamic && p.dynamic.kind === 'sweep') {
           const names = p.dynamic.path.flatMap((pr) => pointRefNames(pr)).map((n) => n.replace('{S}', side ?? 'L'));
           const limbNames = names.map(limbOfLandmark).filter((x): x is LimbKey => !!x);
           if (limbNames.length) {
             limbNames.forEach((l) => limbSet.add(l));
             dynamics.push(p.dynamic);
           } else delete p.dynamic;
+        } else if (p.dynamic && p.dynamic.kind === 'sheet') {
+          limbSet.add(p.dynamic.partId as LimbKey);
+          dynamics.push(p.dynamic);
         }
         if (recipe.type === 'ellipsoid' && !p.segment) {
           const names = pointRefNames(recipe.at).map((n) => n.replace('{S}', side ?? 'L'));
@@ -206,6 +215,16 @@ export async function buildAnimal(payload: SpeciesPayload, opts: BuildOptions = 
       let mat = matCache.get(mk);
       if (!mat) {
         if (mk === 'fur') mat = makeMaterial({ color: '#ffffff', map: fur, roughness: payload.rig.fur.roughness ?? 0.8, H });
+        else if (mk === 'muscleSheet') {
+          // deterministic per-muscle tint so neighbouring sheets read as separate muscles
+          let hsh = 0;
+          for (let i = 0; i < def.id.length; i++) hsh = (hsh * 31 + def.id.charCodeAt(i)) >>> 0;
+          const c = new THREE.Color(colorFor(def));
+          const hsl = { h: 0, s: 0, l: 0 };
+          c.getHSL(hsl);
+          c.setHSL(hsl.h + (((hsh % 13) / 13) - 0.5) * 0.02, Math.min(1, hsl.s + (((hsh >> 4) % 11) / 11 - 0.5) * 0.08), Math.min(1, hsl.l + (((hsh >> 8) % 17) / 17 - 0.5) * 0.07));
+          mat = makeMaterial({ color: c, map: fiber, roughness: 0.48, highlight: '#ff5a3c', H });
+        }
         else if (mk === 'default') mat = makeMaterial({ color: colorFor(def), highlight: def.kind === 'muscle' ? '#ff5a3c' : def.kind === 'tendon' || def.kind === 'ligament' ? '#ffb347' : '#ffd24d', roughness: def.kind === 'bone' ? 0.62 : def.kind === 'tendon' || def.kind === 'ligament' ? 0.55 : def.kind === 'muscle' ? 0.5 : 0.55, H, side: def.id.startsWith('m_obliquus') || def.id === 'm_transversus_abdominis' || def.id === 'mm_intercostales' || def.id === 'diaphragma' ? THREE.DoubleSide : THREE.FrontSide });
         else {
           const c = MAT_COLORS[mk];
@@ -290,6 +309,7 @@ export async function buildAnimal(payload: SpeciesPayload, opts: BuildOptions = 
     skinOnly: !!opts.skinOnly,
     bounds,
     landmarkNow,
+    surface,
     dispose: () => {
       for (const inst of instances) {
         inst.meshes.forEach((m) => m.geometry.dispose());
@@ -307,12 +327,14 @@ export function updateSoftTissue(model: AnimalModel, limb: LimbKey) {
   const ctx = {
     resolve: (ref: PointRef): V3 => resolveNow(ref, rig, side, model.landmarkNow),
   };
+  model.surface.refreshLimb(limb as LimbPartId, model.landmarkNow);
+  const part = model.surface.part(limb as LimbPartId);
   for (const inst of model.instances) {
     if (!inst.isSoftOf(limb)) continue;
     if (inst.side && inst.side !== side) continue;
     for (const d of inst.dynamics) {
-      const pts = d.path.map((p) => ctx.resolve(p));
-      d.sweep.update(pts);
+      if (d.kind === 'sweep') d.sweep.update(d.path.map((p) => ctx.resolve(p)));
+      else if (d.partId === limb) d.sheet.update(part);
     }
     const box = new THREE.Box3();
     for (const m of inst.meshes) {

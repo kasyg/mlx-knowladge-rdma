@@ -4,8 +4,10 @@
  * cranial = -x, dorsal = +y, left = +z.
  */
 import type { SpeciesDef, SpeciesId } from './types.ts';
+import { HORSE_SHEETS } from './anatomy/sheets_horse.ts';
 
 const horse: SpeciesDef = {
+  structureOverrides: Object.fromEntries(Object.entries(HORSE_SHEETS).map(([id, geometry]) => [id, { geometry }])),
   meta: {
     id: 'horse',
     names: { la: 'Equus ferus caballus', cs: 'Kůň domácí', en: 'Horse' },
@@ -45,9 +47,9 @@ const horse: SpeciesDef = {
       ctrl: { x: -0.95, y: 1.3 },
       atlas: { x: -1.08, y: 1.58 },
       sections: [
-        { t: 0, w: 0.19, h: 0.3, yOff: 0.12 },
-        { t: 0.5, w: 0.12, h: 0.22, yOff: 0.08 },
-        { t: 1, w: 0.095, h: 0.14, yOff: 0.03 },
+        { t: 0, w: 0.185, h: 0.3, yOff: 0.12 },
+        { t: 0.5, w: 0.11, h: 0.2, yOff: 0.075 },
+        { t: 1, w: 0.088, h: 0.13, yOff: 0.03 },
       ],
     },
     head: {
@@ -85,14 +87,14 @@ const horse: SpeciesDef = {
     },
     forelimb: {
       z: 0.17,
-      scapulaTop: { x: -0.48, y: 1.52 },
+      scapulaTop: { x: -0.48, y: 1.47 },
       shoulder: { x: -0.78, y: 1.05 },
       elbow: { x: -0.56, y: 0.76 },
       carpus: { x: -0.62, y: 0.44 },
       fetlock: { x: -0.64, y: 0.13 },
       pastern: { x: -0.61, y: 0.06 },
       hoof: { x: -0.58, y: 0 },
-      r: { upper: 0.12, joint1: 0.085, mid: 0.075, joint2: 0.06, cannon: 0.045, fetlock: 0.052, pastern: 0.042, hoof: 0.065 },
+      r: { upper: 0.115, joint1: 0.08, mid: 0.07, joint2: 0.058, cannon: 0.044, fetlock: 0.05, pastern: 0.041, hoof: 0.062 },
     },
     hindlimb: {
       z: 0.16,
@@ -104,7 +106,7 @@ const horse: SpeciesDef = {
       fetlock: { x: 0.74, y: 0.13 },
       pastern: { x: 0.71, y: 0.06 },
       hoof: { x: 0.68, y: 0 },
-      r: { upper: 0.17, joint1: 0.1, mid: 0.085, joint2: 0.065, cannon: 0.045, fetlock: 0.052, pastern: 0.042, hoof: 0.065 },
+      r: { upper: 0.165, joint1: 0.095, mid: 0.076, joint2: 0.06, cannon: 0.044, fetlock: 0.05, pastern: 0.041, hoof: 0.062 },
     },
     tail: { base: { x: 0.82, y: 1.26 }, ctrl: [{ x: 0.95, y: 1.1 }, { x: 1.0, y: 0.85 }], tip: { x: 0.98, y: 0.5 }, r0: 0.035, style: 'horse', hairLength: 0.45 },
     mane: { length: 0.12, forelock: true },

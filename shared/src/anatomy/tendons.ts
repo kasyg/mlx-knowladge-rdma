@@ -25,7 +25,7 @@ export const tendons: StructureDef[] = [
     names: { la: 'Tendo m. flexoris digitorum superficialis (SDFT)', cs: 'Šlacha povrchového ohýbače prstů', en: 'Superficial digital flexor tendon (SDFT)' },
     description: { cs: 'Probíhá po dlaňové straně holeně povrchově nad hlubokou šlachou, nad spěnkou se rozdvojuje (manica flexoria) a upíná se na P1 a P2. U sportovních koní nejčastěji poraněná šlacha.', en: 'Runs on the palmar cannon superficial to the deep tendon, splits above the fetlock (manica flexoria) and inserts on P1 and P2. The most frequently injured tendon of sport horses.' },
     function: { cs: 'Podpírá spěnkový kloub, ohýbá prst', en: 'Supports the fetlock, flexes the digit' },
-    geometry: { type: 'sweep', path: [{ at: 'fl_{S}_carpus', dx: 0.036, dy: 0.03 }, { at: 'fl_{S}_accessory_carpal', dx: 0.012 }, { at: 'fl_{S}_cannon_mid', dx: 0.03 }, { at: 'fl_{S}_sesamoid', dx: 0.012 }, { at: 'fl_{S}_pastern', dx: 0.018 }], r: 0.008, profile: 'tube' },
+    geometry: { type: 'sweep', path: [{ at: 'fl_{S}_carpus', dx: 0.036, dy: 0.03 }, { at: 'fl_{S}_accessory_carpal', dx: 0.012 }, { at: 'fl_{S}_cannon_prox', dx: 0.03 }, { at: 'fl_{S}_cannon_mid', dx: 0.03 }, { at: 'fl_{S}_cannon_dist', dx: 0.028 }, { at: 'fl_{S}_sesamoid', dx: 0.012 }, { at: 'fl_{S}_pastern', dx: 0.018 }], r: 0.0065, aspect: 0.55, outward: 'caudal', profile: 'tube' },
   },
   {
     id: 'tendo_fdp_fl',
@@ -36,7 +36,7 @@ export const tendons: StructureDef[] = [
     names: { la: 'Tendo m. flexoris digitorum profundi (DDFT)', cs: 'Šlacha hlubokého ohýbače prstů', en: 'Deep digital flexor tendon (DDFT)' },
     description: { cs: 'Probíhá po dlaňové straně pod povrchovou šlachou, přes střelkovou kost na kopytní kost. Spolu s SDFT tvoří nápadné „šlachy“ za holení.', en: 'Runs palmar beneath the superficial tendon, over the navicular bone to the distal phalanx. Together with the SDFT it forms the conspicuous "tendons" behind the cannon.' },
     function: { cs: 'Ohýbá kopytní kloub, nese hmotnost ve fázi podpory', en: 'Flexes the coffin joint, bears load during the stance phase' },
-    geometry: { type: 'sweep', path: [{ at: 'fl_{S}_carpus', dx: 0.03, dy: 0.035 }, 'fl_{S}_accessory_carpal', { at: 'fl_{S}_cannon_mid', dx: 0.022 }, { at: 'fl_{S}_sesamoid', dx: 0.004 }, { at: 'fl_{S}_pastern', dx: 0.012 }, { at: 'fl_{S}_coffin', dx: 0.02 }, { at: 'fl_{S}_coffin', dy: -0.015 }], r: 0.008, profile: 'tube' },
+    geometry: { type: 'sweep', path: [{ at: 'fl_{S}_carpus', dx: 0.03, dy: 0.035 }, 'fl_{S}_accessory_carpal', { at: 'fl_{S}_cannon_prox', dx: 0.023 }, { at: 'fl_{S}_cannon_mid', dx: 0.023 }, { at: 'fl_{S}_cannon_dist', dx: 0.021 }, { at: 'fl_{S}_sesamoid', dx: 0.004 }, { at: 'fl_{S}_pastern', dx: 0.012 }, { at: 'fl_{S}_coffin', dx: 0.02 }, { at: 'fl_{S}_coffin', dy: -0.015 }], r: 0.0075, aspect: 0.55, outward: 'caudal', profile: 'tube' },
   },
   {
     id: 'tendo_fds_hl',
@@ -47,7 +47,7 @@ export const tendons: StructureDef[] = [
     names: { la: 'Tendo m. flexoris digitorum superficialis (SDFT)', cs: 'Šlacha povrchového ohýbače prstů (pánevní končetina)', en: 'Superficial digital flexor tendon (hindlimb)' },
     description: { cs: 'Přechází přes patní hrbol, kde tvoří „čepičku“, a pokračuje po plantární straně nártu ke spěnce.', en: 'Passes over the tuber calcanei, forming a cap, and continues down the plantar metatarsus to the fetlock.' },
     function: { cs: 'Podpírá spěnku, součást reciprokého aparátu', en: 'Supports the fetlock, part of the reciprocal apparatus' },
-    geometry: { type: 'sweep', path: [{ at: 'hl_{S}_tibia_dist', dx: 0.03 }, { at: 'hl_{S}_calcaneus', dx: 0.008 }, { at: 'hl_{S}_cannon_prox', dx: 0.03 }, { at: 'hl_{S}_cannon_mid', dx: 0.03 }, { at: 'hl_{S}_sesamoid', dx: 0.012 }, { at: 'hl_{S}_pastern', dx: 0.018 }], r: 0.008, profile: 'tube' },
+    geometry: { type: 'sweep', path: [{ at: 'hl_{S}_tibia_dist', dx: 0.03 }, { at: 'hl_{S}_calcaneus', dx: 0.008 }, { at: 'hl_{S}_cannon_prox', dx: 0.03 }, { at: 'hl_{S}_cannon_mid', dx: 0.03 }, { at: 'hl_{S}_cannon_dist', dx: 0.028 }, { at: 'hl_{S}_sesamoid', dx: 0.012 }, { at: 'hl_{S}_pastern', dx: 0.018 }], r: 0.0065, aspect: 0.55, outward: 'caudal', profile: 'tube' },
   },
   {
     id: 'tendo_fdp_hl',
@@ -58,7 +58,7 @@ export const tendons: StructureDef[] = [
     names: { la: 'Tendo m. flexoris digitorum profundi (DDFT)', cs: 'Šlacha hlubokého ohýbače prstů (pánevní končetina)', en: 'Deep digital flexor tendon (hindlimb)' },
     description: { cs: 'Probíhá za hleznem v šlachové pochvě (tarzální pochva) a pokračuje na kopytní kost.', en: 'Runs behind the hock in the tarsal sheath and continues to the distal phalanx.' },
     function: { cs: 'Ohýbá prst', en: 'Flexes the digit' },
-    geometry: { type: 'sweep', path: [{ at: 'hl_{S}_hock', dx: 0.026, dy: 0.03, lat: -0.012 }, { at: 'hl_{S}_hock', dx: 0.03, dy: -0.012 }, { at: 'hl_{S}_cannon_mid', dx: 0.022 }, { at: 'hl_{S}_sesamoid', dx: 0.004 }, { at: 'hl_{S}_pastern', dx: 0.012 }, { at: 'hl_{S}_coffin', dx: 0.02 }, { at: 'hl_{S}_coffin', dy: -0.015 }], r: 0.008, profile: 'tube' },
+    geometry: { type: 'sweep', path: [{ at: 'hl_{S}_hock', dx: 0.026, dy: 0.03, lat: -0.012 }, { at: 'hl_{S}_hock', dx: 0.03, dy: -0.012 }, { at: 'hl_{S}_cannon_prox', dx: 0.023 }, { at: 'hl_{S}_cannon_mid', dx: 0.023 }, { at: 'hl_{S}_cannon_dist', dx: 0.021 }, { at: 'hl_{S}_sesamoid', dx: 0.004 }, { at: 'hl_{S}_pastern', dx: 0.012 }, { at: 'hl_{S}_coffin', dx: 0.02 }, { at: 'hl_{S}_coffin', dy: -0.015 }], r: 0.0075, aspect: 0.55, outward: 'caudal', profile: 'tube' },
   },
   {
     id: 'lig_suspensorium_fl',
@@ -71,7 +71,7 @@ export const tendons: StructureDef[] = [
     description: { cs: 'Přeměněný mezikostní sval; od zadní strany zápěstí sestupuje mezi bodcovými kostmi, rozdvojuje se na sezamské kosti a vysílá větve k natahovačové šlaše. Základ závěsného aparátu spěnky.', en: 'A modified interosseous muscle; from the palmar carpus it runs between the splint bones, splits onto the sesamoid bones and sends branches to the extensor tendon. The core of the suspensory apparatus of the fetlock.' },
     function: { cs: 'Brání přílišnému prošlápnutí (hyperextenzi) spěnky při zatížení – ukládá a vrací pružnou energii', en: 'Prevents overextension of the fetlock under load – stores and returns elastic energy' },
     geometry: [
-      { type: 'sweep', path: [{ at: 'fl_{S}_cannon_prox', dx: 0.016 }, { at: 'fl_{S}_cannon_mid', dx: 0.016 }, 'fl_{S}_sesamoid'], r: 0.009, profile: 'tube' },
+      { type: 'sweep', path: [{ at: 'fl_{S}_cannon_prox', dx: 0.016 }, { at: 'fl_{S}_cannon_mid', dx: 0.016 }, { at: 'fl_{S}_cannon_dist', dx: 0.015 }, 'fl_{S}_sesamoid'], r: 0.009, aspect: 0.45, outward: 'caudal', profile: 'tube' },
       { type: 'sweep', path: [{ at: 'fl_{S}_sesamoid', lat: 0.012 }, { at: 'fl_{S}_pastern', dx: -0.02, lat: 0.012 }], r: 0.004, profile: 'tube' },
       { type: 'sweep', path: [{ at: 'fl_{S}_sesamoid', lat: -0.012 }, { at: 'fl_{S}_pastern', dx: -0.02, lat: -0.012 }], r: 0.004, profile: 'tube' },
     ],
@@ -87,7 +87,7 @@ export const tendons: StructureDef[] = [
     description: { cs: 'Závěsný vaz pánevní končetiny; u dostihových koní častěji postižen zánětem (desmitida) v horní části.', en: 'The hindlimb suspensory; in racehorses its proximal part is often affected by desmitis.' },
     function: { cs: 'Podpírá spěnkový kloub', en: 'Supports the fetlock joint' },
     geometry: [
-      { type: 'sweep', path: [{ at: 'hl_{S}_cannon_prox', dx: 0.016 }, { at: 'hl_{S}_cannon_mid', dx: 0.016 }, 'hl_{S}_sesamoid'], r: 0.009, profile: 'tube' },
+      { type: 'sweep', path: [{ at: 'hl_{S}_cannon_prox', dx: 0.016 }, { at: 'hl_{S}_cannon_mid', dx: 0.016 }, { at: 'hl_{S}_cannon_dist', dx: 0.015 }, 'hl_{S}_sesamoid'], r: 0.009, aspect: 0.45, outward: 'caudal', profile: 'tube' },
       { type: 'sweep', path: [{ at: 'hl_{S}_sesamoid', lat: 0.012 }, { at: 'hl_{S}_pastern', dx: -0.02, lat: 0.012 }], r: 0.004, profile: 'tube' },
       { type: 'sweep', path: [{ at: 'hl_{S}_sesamoid', lat: -0.012 }, { at: 'hl_{S}_pastern', dx: -0.02, lat: -0.012 }], r: 0.004, profile: 'tube' },
     ],
@@ -113,7 +113,7 @@ export const tendons: StructureDef[] = [
     names: { la: 'Tendo m. extensoris digitorum communis', cs: 'Šlacha společného natahovače prstů', en: 'Common digital extensor tendon' },
     description: { cs: 'Sbíhá po přední straně zápěstí, holeně a spěnky až na natahovačový výběžek kopytní kosti.', en: 'Runs down the dorsal carpus, cannon and pastern to the extensor process of the distal phalanx.' },
     function: { cs: 'Natahuje prst, předvádí končetinu ve švihu', en: 'Extends the digit, advances the limb in the swing phase' },
-    geometry: { type: 'sweep', path: [{ at: 'fl_{S}_carpus', dx: -0.026, lat: 0.012 }, { at: 'fl_{S}_cannon_mid', dx: -0.02 }, { at: 'fl_{S}_fetlock', dx: -0.024 }, { at: 'fl_{S}_pastern', dx: -0.02 }, { at: 'fl_{S}_coffin', dx: -0.02, dy: 0.006 }], r: 0.006, profile: 'tube' },
+    geometry: { type: 'sweep', path: [{ at: 'fl_{S}_carpus', dx: -0.026, lat: 0.012 }, { at: 'fl_{S}_cannon_prox', dx: -0.017 }, { at: 'fl_{S}_cannon_mid', dx: -0.016 }, { at: 'fl_{S}_cannon_dist', dx: -0.018 }, { at: 'fl_{S}_fetlock', dx: -0.024 }, { at: 'fl_{S}_pastern', dx: -0.02 }, { at: 'fl_{S}_coffin', dx: -0.02, dy: 0.006 }], r: 0.006, aspect: 0.6, outward: 'cranial', profile: 'tube' },
   },
   {
     id: 'tendo_ext_dig_longus',
@@ -124,7 +124,7 @@ export const tendons: StructureDef[] = [
     names: { la: 'Tendo m. extensoris digitorum longi', cs: 'Šlacha dlouhého natahovače prstů', en: 'Long digital extensor tendon' },
     description: { cs: 'Přechází přes přední stranu hlezna pod vazivovými poutky a pokračuje po nártu na kopytní kost.', en: 'Crosses the dorsal hock under retinacula and continues down the metatarsus to the distal phalanx.' },
     function: { cs: 'Natahuje prst pánevní končetiny', en: 'Extends the hind digit' },
-    geometry: { type: 'sweep', path: [{ at: 'hl_{S}_hock_cranial', dx: -0.006, lat: 0.012 }, { at: 'hl_{S}_cannon_mid', dx: -0.02 }, { at: 'hl_{S}_fetlock', dx: -0.024 }, { at: 'hl_{S}_pastern', dx: -0.02 }, { at: 'hl_{S}_coffin', dx: -0.02, dy: 0.006 }], r: 0.006, profile: 'tube' },
+    geometry: { type: 'sweep', path: [{ at: 'hl_{S}_hock_cranial', dx: -0.006, lat: 0.012 }, { at: 'hl_{S}_cannon_prox', dx: -0.017 }, { at: 'hl_{S}_cannon_mid', dx: -0.016 }, { at: 'hl_{S}_cannon_dist', dx: -0.018 }, { at: 'hl_{S}_fetlock', dx: -0.024 }, { at: 'hl_{S}_pastern', dx: -0.02 }, { at: 'hl_{S}_coffin', dx: -0.02, dy: 0.006 }], r: 0.006, aspect: 0.6, outward: 'cranial', profile: 'tube' },
   },
   {
     id: 'lig_nuchae',

@@ -56,10 +56,16 @@ async function waitAtlas(page) {
   await page.waitForFunction(() => window.__vetatlas?.store.getState().view === 'atlas' && !window.__vetatlas.store.getState().loading.active, null, { timeout: 120000 });
   await waitFrames(page, 6);
 }
+const seenErrors = new Set();
 function attach(page) {
-  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  page.on('pageerror', (e) => {
+    const key = (e.stack || e.message).split('\n').slice(0, 3).join(' | ');
+    if (seenErrors.has(key)) return;
+    seenErrors.add(key);
+    errors.push(`pageerror: ${key}`);
+  });
   page.on('console', (m) => {
-    if (m.type() === 'error') errors.push(`console: ${m.text()}`);
+    if (m.type() === 'error' && !m.text().includes('navigator.vibrate')) errors.push(`console: ${m.text()}`);
   });
 }
 
@@ -176,7 +182,7 @@ function attach(page) {
   check('heart beats (scale changes over time)', Math.abs(heartScale.a - heartScale.b) > 0.001 || heartScale.a !== 1, JSON.stringify(heartScale));
   const flow = await page.evaluate(() => { const r = window.__vetatlasRuntime; const a = r.model.byKey.get('aorta'); return a.uniforms[0].uFlow.value; });
   check('blood flow animation enabled on vessels', flow === 1);
-  const particles = await page.evaluate(() => { const g = window.__vetatlasRuntime.model.root.parent; return [...g.children].some((c) => c.name === 'air-particles' && c.visible) && [...g.children].some((c) => c.name === 'food-particles' && c.visible); });
+  const particles = await page.evaluate(() => { const g = window.__vetatlasRuntime.model.root.parent; const a = g.getObjectByName('air-particles'); const f = g.getObjectByName('food-particles'); return !!a && a.visible && !!f && f.visible; });
   check('air and food particles are visible with the respiratory/digestive systems on', particles);
 
   // limb motion

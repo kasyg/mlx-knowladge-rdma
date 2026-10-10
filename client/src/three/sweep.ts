@@ -8,8 +8,8 @@ export interface SweepOptions {
   radius: (t: number) => number;
   radial?: number;
   segments?: number;
-  /** thickness (along the outward normal) / width ratio */
-  aspect?: number;
+  /** thickness (along the outward normal) / width ratio; may vary along the path */
+  aspect?: number | ((t: number) => number);
   /** reference direction for the section normal; may vary along the path */
   outward?: V3 | ((t: number) => V3) | null;
   closed?: boolean;
@@ -30,7 +30,7 @@ const _prevN = new THREE.Vector3();
  * place every frame (used for muscles and tendons during limb motion).
  */
 export class SweepGeometry extends THREE.BufferGeometry {
-  readonly opts: Required<Pick<SweepOptions, 'radial' | 'segments' | 'aspect' | 'closed' | 'caps' | 'tension'>> & SweepOptions;
+  readonly opts: Required<Pick<SweepOptions, 'radial' | 'segments' | 'closed' | 'caps' | 'tension'>> & SweepOptions & { aspect: number | ((t: number) => number) };
   curve!: THREE.CatmullRomCurve3;
   length = 0;
   private ringCount: number;
@@ -122,7 +122,7 @@ export class SweepGeometry extends THREE.BufferGeometry {
       hasPrev = true;
       _b.crossVectors(_t, _n).normalize();
       const r = Math.max(1e-5, radius(t));
-      const rN = r * aspect;
+      const rN = r * (typeof aspect === 'function' ? aspect(t) : aspect);
       for (let j = 0; j < radial; j++) {
         const th = (j / radial) * Math.PI * 2;
         const cx = Math.cos(th) * rN;
@@ -149,6 +149,53 @@ export class SweepGeometry extends THREE.BufferGeometry {
   }
 }
 
+export interface SweepFrame {
+  P: THREE.Vector3;
+  T: THREE.Vector3;
+  N: THREE.Vector3;
+  B: THREE.Vector3;
+}
+
+/**
+ * Continuous parametric view of a sweep with a constant outward reference:
+ * theta (0 = +N outward axis, π/2 = +B) × t (0..1 along the curve).
+ * Identical math to SweepGeometry, so skin limbs and muscle sheets coincide.
+ */
+export class SweepSurface {
+  readonly curve: THREE.CatmullRomCurve3;
+  readonly length: number;
+  constructor(readonly points: V3[], readonly radius: (t: number) => number, readonly aspect: number | ((t: number) => number), readonly outward: V3, tension = 0.5) {
+    this.curve = new THREE.CatmullRomCurve3(points.map((p) => new THREE.Vector3(p[0], p[1], p[2])), false, 'centripetal', tension);
+    this.length = this.curve.getLength();
+  }
+  frame(t: number, out: SweepFrame): SweepFrame {
+    this.curve.getPointAt(t, out.P);
+    this.curve.getTangentAt(Math.min(Math.max(t, 0.0001), 0.9999), out.T);
+    if (out.T.lengthSq() < 1e-10) out.T.set(0, -1, 0);
+    out.T.normalize();
+    out.N.set(this.outward[0], this.outward[1], this.outward[2]);
+    out.N.addScaledVector(out.T, -out.T.dot(out.N));
+    if (out.N.lengthSq() < 1e-6) out.N.set(0, 0, 1).addScaledVector(out.T, -out.T.z);
+    out.N.normalize();
+    out.B.crossVectors(out.T, out.N).normalize();
+    return out;
+  }
+  sampleWithFrame(theta: number, t: number, f: SweepFrame, target: THREE.Vector3): THREE.Vector3 {
+    const r = Math.max(1e-5, this.radius(t));
+    const cx = Math.cos(theta) * r * this.aspectAt(t);
+    const cy = Math.sin(theta) * r;
+    return target.copy(f.P).addScaledVector(f.N, cx).addScaledVector(f.B, cy);
+  }
+  aspectAt(t: number) {
+    return typeof this.aspect === 'function' ? this.aspect(t) : this.aspect;
+  }
+  sample(theta: number, t: number, target = new THREE.Vector3()): THREE.Vector3 {
+    const f = { P: new THREE.Vector3(), T: new THREE.Vector3(), N: new THREE.Vector3(), B: new THREE.Vector3() };
+    this.frame(t, f);
+    return this.sampleWithFrame(theta, t, f, target);
+  }
+}
+
 export type ProfileKind = 'fusiform' | 'tube' | 'bone' | 'taper' | 'cone' | 'flat';
 
 const ss = (a: number, b: number, x: number) => {
@@ -170,9 +217,12 @@ export function profileFn(kind: ProfileKind | undefined, r: number | number[], r
   const arr = Array.isArray(r) ? r : [r];
   const base = (t: number) => interpArray(arr, t);
   switch (kind) {
-    case 'fusiform':
-      if (Array.isArray(r)) return (t) => base(t) * (0.4 + 0.6 * Math.pow(Math.sin(Math.PI * t), 0.5));
-      return (t) => arr[0] * (rEnds + (1 - rEnds) * Math.pow(Math.sin(Math.PI * t), 0.75));
+    case 'fusiform': {
+      // rounded ends: taper quickly to a small radius so the caps read as rounded tips
+      const ends = (t: number) => Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, t))), 0.5);
+      if (Array.isArray(r)) return (t) => base(t) * (0.15 + 0.85 * ends(t));
+      return (t) => arr[0] * (rEnds * 0.4 + (1 - rEnds * 0.4) * Math.pow(Math.sin(Math.PI * t), 0.7)) * (0.5 + 0.5 * ends(t));
+    }
     case 'bone': {
       const rp = arr[0];
       const rs = arr.length > 1 ? arr[1] : arr[0] * 0.6;

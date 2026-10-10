@@ -114,14 +114,15 @@ export function CameraRig() {
     const c = ref.current;
     if (!c) return;
     const lr = lastRegion.current;
+    const az = c.azimuthAngle, polar = c.polarAngle;
     if (lr) {
       c.fitToBox(lr.box, true, padFor(lr.box));
-      if (reset) c.rotateTo(lr.az, lr.polar, true);
+      c.rotateTo(reset ? lr.az : az, reset ? lr.polar : polar, true);
     } else {
       const m = speciesId ? models.full.get(speciesId) : null;
       if (!m) return;
       c.fitToBox(m.bounds, true, padFor(m.bounds));
-      if (reset) c.rotateTo(0, 1.42, true);
+      c.rotateTo(reset ? 0 : az, reset ? 1.42 : polar, true);
     }
   };
 

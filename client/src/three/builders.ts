@@ -5,19 +5,23 @@
  */
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import type { GeometryRecipe, PointRef, Side, SpeciesPayload, SweepRecipe, LoftRecipe, EllipsoidRecipe, SpecialRecipe, Outward } from '@shared/types';
+import type { GeometryRecipe, PointRef, Side, SpeciesPayload, SweepRecipe, LoftRecipe, EllipsoidRecipe, SpecialRecipe, SheetRecipe, CornerRef, Outward } from '@shared/types';
+import { BodySurface, skinTrunkLoft, skinNeckLoft, skinHeadLoft, skinLimbSweep, type PartId, type LimbPartId } from './surface.ts';
+import { SheetGeometry, type UV } from './sheet.ts';
 import type { Rig } from '@shared/rig';
 import { resolvePoint } from '@shared/rig';
 import { SweepGeometry, profileFn, type V3 } from './sweep.ts';
 import { loftGeometry, gridGeometry, ellipsoidGeometry } from './loft.ts';
 
-export type MaterialKey = 'default' | 'dark' | 'eye' | 'hoof' | 'horn' | 'fur' | 'cartilage' | 'pad' | 'tooth' | 'pink' | 'tendonCap';
+export type MaterialKey = 'default' | 'dark' | 'eye' | 'hoof' | 'horn' | 'fur' | 'cartilage' | 'pad' | 'tooth' | 'pink' | 'tendonCap' | 'muscleSheet';
+
+export type DynamicPart = { kind: 'sweep'; sweep: SweepGeometry; path: PointRef[] } | { kind: 'sheet'; sheet: SheetGeometry; partId: LimbPartId };
 
 export interface Part {
   geometry: THREE.BufferGeometry;
   material: MaterialKey;
-  /** present for soft-tissue sweeps that follow limb motion */
-  dynamic?: { sweep: SweepGeometry; path: PointRef[] };
+  /** present for soft tissue that follows limb motion */
+  dynamic?: DynamicPart;
   pathLength?: number;
   /** rigid attachment to a limb segment (e.g. "fl_L_carpus") for motion */
   segment?: string;
@@ -29,11 +33,12 @@ export interface BuildCtx {
   payload: SpeciesPayload;
   side: Side | null;
   sgn: number;
+  surface: BodySurface;
   resolve: (ref: PointRef) => V3;
   lm: (name: string) => V3;
 }
 
-export function makeCtx(rig: Rig, payload: SpeciesPayload, side: Side | null): BuildCtx {
+export function makeCtx(rig: Rig, payload: SpeciesPayload, side: Side | null, surface: BodySurface): BuildCtx {
   const S = side ?? 'L';
   return {
     rig,
@@ -41,6 +46,7 @@ export function makeCtx(rig: Rig, payload: SpeciesPayload, side: Side | null): B
     payload,
     side,
     sgn: S === 'L' ? 1 : -1,
+    surface,
     resolve: (ref) => resolvePoint(ref, rig, side),
     lm: (name) => {
       const p = rig.landmarks[name.replace('{S}', S)];
@@ -83,7 +89,7 @@ function outwardVec(o: Outward | undefined, sgn: number): V3 | null {
   return null;
 }
 
-export function sweepPart(points: V3[], radius: (t: number) => number, o: { aspect?: number; outward?: V3 | ((t: number) => V3) | null; closed?: boolean; radial?: number; segments?: number; material?: MaterialKey; caps?: boolean; tension?: number } = {}): Part {
+export function sweepPart(points: V3[], radius: (t: number) => number, o: { aspect?: number | ((t: number) => number); outward?: V3 | ((t: number) => V3) | null; closed?: boolean; radial?: number; segments?: number; material?: MaterialKey; caps?: boolean; tension?: number } = {}): Part {
   const g = new SweepGeometry({ points, radius, aspect: o.aspect ?? 1, outward: o.outward ?? null, closed: o.closed, radial: o.radial ?? 12, segments: o.segments ?? 20, caps: o.caps, tension: o.tension });
   return { geometry: g, material: o.material ?? 'default', pathLength: g.length };
 }
@@ -95,10 +101,10 @@ export function ellPart(at: V3, size: V3, o: { rot?: V3; material?: MaterialKey;
   return { geometry: g, material: o.material ?? 'default' };
 }
 
-function segmentsFor(points: V3[], H: number, min = 8, max = 40) {
+function segmentsFor(points: V3[], H: number, min = 8, max = 96) {
   let l = 0;
   for (let i = 1; i < points.length; i++) l += len(sub(points[i], points[i - 1]));
-  return Math.max(min, Math.min(max, Math.round(l / (0.025 * H))));
+  return Math.max(min, Math.min(max, Math.round(l / (0.012 * H))));
 }
 
 function constRadius(r: number) {
@@ -112,11 +118,40 @@ function buildSweep(r: SweepRecipe, ctx: BuildCtx, soft: boolean): Part {
   const rr = Array.isArray(r.r) ? r.r.map((v) => v * H) : r.r * H;
   const radius = profileFn(r.profile ?? 'tube', rr, r.rEnds);
   const maxR = Array.isArray(rr) ? Math.max(...rr) : rr;
-  const radial = r.radial ?? (maxR > 0.035 * H ? 18 : maxR > 0.015 * H ? 14 : 10);
-  const segments = r.segments ?? segmentsFor(points, H, r.closed ? 16 : 8, 36);
+  const radial = r.radial ?? (maxR > 0.035 * H ? 20 : maxR > 0.015 * H ? 16 : 12);
+  const segments = r.segments ?? segmentsFor(points, H, r.closed ? 16 : 8, 96);
   const part = sweepPart(points, radius, { aspect: r.aspect, outward: outwardVec(r.outward, ctx.sgn), closed: r.closed, radial, segments, tension: r.tension });
-  if (soft) part.dynamic = { sweep: part.geometry as SweepGeometry, path: r.path };
+  if (soft) part.dynamic = { kind: 'sweep', sweep: part.geometry as SweepGeometry, path: r.path };
   return part;
+}
+
+function buildSheet(r: SheetRecipe, ctx: BuildCtx): Part {
+  const H = ctx.H;
+  const isLimb = r.part === 'fl' || r.part === 'hl';
+  const partId = (isLimb ? `${r.part}_${ctx.side ?? 'L'}` : r.part) as PartId;
+  const part = ctx.surface.part(partId);
+  const mirror = ctx.side === 'R' && !isLimb;
+  const corner = (c: CornerRef | null | undefined): UV | null => {
+    if (!c) return null;
+    if (Array.isArray(c)) return mirror ? [1 - c[0], c[1]] : [c[0], c[1]];
+    const [u, v] = part.uvOf(ctx.lm(c.at));
+    const du = mirror ? -(c.du ?? 0) : c.du ?? 0;
+    return [u + du, v + (c.dv ?? 0)];
+  };
+  const corners = r.corners.map((c) => corner(c)!) as [UV, UV, UV, UV];
+  const mids = (r.mids ?? []).map((c) => corner(c));
+  const layer = r.layer ?? 1;
+  const g = new SheetGeometry(part, {
+    corners,
+    mids,
+    bulge: r.bulge * H,
+    dip: (r.dip ?? 0.0055) * H,
+    skinOffset: 0.0035 * H + (layer - 1) * 0.006 * H,
+    tile: 0.05 * H,
+  });
+  const out: Part = { geometry: g, material: 'muscleSheet' };
+  if (isLimb) out.dynamic = { kind: 'sheet', sheet: g, partId: partId as LimbPartId };
+  return out;
 }
 
 function buildEllipsoid(r: EllipsoidRecipe, ctx: BuildCtx): Part {
@@ -152,6 +187,8 @@ export function buildRecipe(recipe: GeometryRecipe, ctx: BuildCtx, soft: boolean
       return [buildLoft(recipe, ctx)];
     case 'special':
       return buildSpecial(recipe, ctx);
+    case 'sheet':
+      return [buildSheet(recipe, ctx)];
   }
 }
 
@@ -209,85 +246,16 @@ function buildSkin(_r: SpecialRecipe, ctx: BuildCtx): Part[] {
   const { rig, H } = ctx;
   const P = rig.params;
   const parts: Part[] = [];
-  // trunk loft
-  const secs = P.trunk.sections;
-  const axis: V3[] = secs.map((s) => [s.x, (s.top + s.bottom) / 2, 0]);
-  const xMin = secs[0].x, xMax = secs[secs.length - 1].x;
-  parts.push({
-    geometry: loftGeometry({
-      axis,
-      section: (t) => {
-        const s = rig.trunkSection(lerp(xMin, xMax, t));
-        return { w: s.w, h: (s.top - s.bottom) / 2, n: s.n, pear: s.pear };
-      },
-      segments: 56,
-      radial: 48,
-      tension: 0.3,
-    }),
-    material: 'fur',
-  });
-  // neck loft
-  const neckAxis: V3[] = [];
-  for (let i = 0; i <= 8; i++) {
-    const t = lerp(-0.08, 1.04, i / 8);
-    const p = rig.neck.point(Math.min(1, Math.max(0, t)));
-    const tan = rig.neck.tangent(Math.min(1, Math.max(0, t)));
-    const ext = t < 0 ? -t : t > 1 ? t - 1 : 0;
-    const q: V3 = t < 0 ? sub(p, mul(tan, ext * rig.neck.length)) : t > 1 ? add(p, mul(tan, ext * rig.neck.length)) : p;
-    const sec = rig.neck.section(Math.min(1, Math.max(0, t)));
-    neckAxis.push([q[0], q[1] + (sec.yOff ?? 0), q[2]]);
-  }
-  parts.push({
-    geometry: loftGeometry({
-      axis: neckAxis,
-      section: (t) => {
-        const tt = lerp(-0.08, 1.04, t);
-        const sec = rig.neck.section(Math.min(1, Math.max(0, tt)));
-        const k = tt < 0 ? 1 + tt * 1.2 : 1;
-        return { w: sec.w * k, h: sec.h * k, n: 2.2, pear: -0.08 };
-      },
-      segments: 28,
-      radial: 36,
-    }),
-    material: 'fur',
-  });
-  // head loft
+  // trunk, neck and head lofts come from the shared body-surface definitions so muscle sheets coincide with the skin
+  parts.push({ geometry: loftGeometry(skinTrunkLoft(rig)), material: 'fur' });
+  parts.push({ geometry: loftGeometry(skinNeckLoft(rig)), material: 'fur' });
+  parts.push({ geometry: loftGeometry(skinHeadLoft(rig)), material: 'fur' });
   const hd = rig.head;
-  const headAxis: V3[] = [];
-  for (let i = 0; i <= 10; i++) {
-    const t = lerp(-0.06, 1.0, i / 10);
-    const sec = rig.head.section(Math.max(0, t));
-    const p = add(add(hd.origin, mul(hd.dir, t * hd.length)), mul(hd.up, sec.yOff ?? 0));
-    headAxis.push(p);
-  }
-  parts.push({
-    geometry: loftGeometry({
-      axis: headAxis,
-      section: (t) => {
-        const tt = lerp(-0.06, 1.0, t);
-        const sec = rig.head.section(Math.max(0, tt));
-        const k = tt < 0 ? 0.92 : 1;
-        return { w: sec.w * k, h: sec.h * k, n: sec.n ?? 2.1 };
-      },
-      up: hd.up,
-      segments: 32,
-      radial: 36,
-    }),
-    material: 'fur',
-  });
-  // limbs
   for (const S of ['L', 'R'] as Side[]) {
-    const f = (n: string) => rig.landmarks[`fl_${S}_${n}`];
-    const h = (n: string) => rig.landmarks[`hl_${S}_${n}`];
-    const fr = P.forelimb.r;
-    const hr = P.hindlimb.r;
-    const k = 1.12; // distal limb skin is a little thicker than the bone + tendon core
-    const fPts: V3[] = [add(f('shoulder'), [0.04 * H, 0.14 * H, 0]), add(f('shoulder'), [0.01 * H, 0.06 * H, 0]), f('shoulder'), f('elbow'), f('radius_mid'), f('carpus'), f('cannon_mid'), f('fetlock'), f('pastern'), f('coffin')];
-    const fR = [fr.upper * 1.3, fr.upper * 1.2, fr.upper, fr.joint1, fr.mid, fr.joint2 * k, fr.cannon * k, fr.fetlock * k, fr.pastern * k, fr.pastern * k * 0.95];
-    parts.push(sweepPart(fPts, profileFn('taper', fR), { radial: 20, segments: 44, material: 'fur', aspect: 0.9, outward: [-1, 0, 0] }));
-    const hPts: V3[] = [add(h('hip'), [-0.06 * H, 0.16 * H, 0]), add(h('hip'), [-0.03 * H, 0.08 * H, 0]), h('hip'), h('femur_mid'), h('stifle'), h('tibia_mid'), h('hock'), h('cannon_mid'), h('fetlock'), h('pastern'), h('coffin')];
-    const hR = [hr.upper * 1.35, hr.upper * 1.25, hr.upper * 1.05, hr.upper * 0.85, hr.joint1, hr.mid, hr.joint2 * k, hr.cannon * k, hr.fetlock * k, hr.pastern * k, hr.pastern * k * 0.95];
-    parts.push(sweepPart(hPts, profileFn('taper', hR), { radial: 20, segments: 48, material: 'fur', aspect: 0.9, outward: [-1, 0, 0] }));
+    for (const limb of ['fl', 'hl'] as const) {
+      const d = skinLimbSweep(rig, (n) => rig.landmarks[n], limb, S);
+      parts.push(sweepPart(d.points, profileFn('taper', d.radii), { radial: 28, segments: limb === 'fl' ? 56 : 60, material: 'fur', aspect: d.aspect, outward: d.outward }));
+    }
   }
   parts.push(...buildEars(ctx, 'fur', 1));
   parts.push(...buildTail(ctx));
@@ -302,19 +270,27 @@ function buildSkin(_r: SpecialRecipe, ctx: BuildCtx): Part[] {
     parts.push(ellPart(add(rig.landmarks.skull_nose, mul(hd.up, sec.h * 0.25)), [sec.w * 0.45, sec.h * 0.4, sec.w * 0.8], { material: 'dark', detail: 12 }));
   }
   if (P.mane) {
-    const pts: V3[] = [];
-    const rr: number[] = [];
-    for (let i = 0; i <= 8; i++) {
-      const t = lerp(0.04, 0.96, i / 8);
-      const p = rig.neck.point(t);
-      const sec = rig.neck.section(t);
-      pts.push([p[0], p[1] + (sec.yOff ?? 0) + sec.h * 0.92, -0.03 * H]);
-      rr.push(P.mane.length * (0.55 + 0.45 * Math.sin(Math.PI * t)));
+    const neck = ctx.surface.part('neck');
+    const nStrands = 15;
+    const sc = H / 1.6;
+    const out = (u: number, v: number, off: number): V3 => {
+      const q = neck.sample(u, v);
+      const n = neck.normal(u, v);
+      return [q.x + n.x * off, q.y + n.y * off, q.z + n.z * off];
+    };
+    for (let i = 0; i < nStrands; i++) {
+      const v = lerp(0.1, 0.92, i / (nStrands - 1));
+      const len = P.mane.length * (0.7 + 0.3 * Math.sin(Math.PI * (i + 0.5) / nStrands));
+      const spread = len / 0.12; // fraction of the circumference the strand hangs over
+      const pts: V3[] = [out(0.0, v, 0.012 * sc), out(0.985, v, 0.016 * sc), out(0.95 - 0.04 * spread, v + 0.01, 0.018 * sc), out(0.92 - 0.08 * spread, v + 0.02, 0.012 * sc), out(0.9 - 0.11 * spread, v + 0.03, 0.006 * sc)];
+      parts.push(sweepPart(pts, profileFn('taper', [0.012 * sc, 0.02 * sc, 0.02 * sc, 0.014 * sc, 0.003 * sc]), { aspect: 0.45, outward: [0, 0, -1], radial: 8, segments: 14, material: 'dark' }));
     }
-    parts.push(sweepPart(pts, profileFn('taper', rr), { aspect: 0.3, outward: [0, 0.2, -1], radial: 10, segments: 20, material: 'dark' }));
     if (P.mane.forelock) {
       const poll = rig.landmarks.skull_poll;
-      parts.push(sweepPart([poll, add(poll, [-0.08 * H, -0.01 * H, 0]), add(poll, [-0.14 * H, -0.05 * H, 0])], profileFn('taper', [0.035 * H, 0.03 * H, 0.01 * H]), { aspect: 0.4, outward: [0, 1, 0], radial: 10, segments: 10, material: 'dark' }));
+      for (const k of [-1, 0, 1]) {
+        const a: V3 = add(poll, [0.01 * H, 0.005 * H, k * 0.02 * H]);
+        parts.push(sweepPart([a, add(a, [-0.07 * H, -0.01 * H, k * 0.01 * H]), add(a, [-0.14 * H, -0.06 * H, k * 0.025 * H])], profileFn('taper', [0.012 * sc, 0.016 * sc, 0.004 * sc]), { aspect: 0.5, outward: [0, 1, 0], radial: 8, segments: 10, material: 'dark' }));
+      }
     }
   }
   if (P.trunk.udder) {
@@ -363,10 +339,19 @@ function buildTail(ctx: BuildCtx): Part[] {
   const prof = [T.r0 * 1.1, T.r0, T.r0 * 0.8, rEnd];
   parts.push(sweepPart(pts, profileFn('taper', prof), { radial: 12, segments: 24, material: style === 'horse' ? 'dark' : 'fur' }));
   if (style === 'horse') {
-    const tip = rig.tail.point(1);
     const L = T.hairLength ?? 0.4;
-    const hair: V3[] = [rig.tail.point(0.1), rig.tail.point(0.6), add(tip, [0.02 * H, -L * 0.5, 0]), add(tip, [0.03 * H, -L, 0])];
-    parts.push(sweepPart(hair, profileFn('taper', [0.015 * H, 0.04 * H, 0.042 * H, 0.012 * H]), { aspect: 0.55, outward: [1, 0, 0], radial: 12, segments: 24, material: 'dark' }));
+    const n = 11;
+    for (let i = 0; i < n; i++) {
+      const t0 = 0.08 + 0.55 * (i / (n - 1));
+      const a = (i / n) * Math.PI * 2 + 0.4;
+      const c = rig.tail.point(t0);
+      const r0 = T.r0 * (1 - 0.6 * t0);
+      const off: V3 = [Math.cos(a) * r0 * 0.9, 0, Math.sin(a) * r0 * 0.9];
+      const p0 = add(c, off);
+      const sway = Math.sin(i * 1.7) * 0.03 * H;
+      const hair: V3[] = [p0, add(p0, [0.01 * H, -L * 0.25, off[2] * 0.6 + sway * 0.3]), add(p0, [0.025 * H, -L * 0.6, off[2] * 0.9 + sway]), add(p0, [0.03 * H, -L * (0.85 + 0.15 * Math.sin(i * 2.3)), off[2] * 1.1 + sway * 1.2])];
+      parts.push(sweepPart(hair, profileFn('taper', [0.012 * H, 0.016 * H, 0.014 * H, 0.003 * H]), { aspect: 0.6, outward: [1, 0, 0], radial: 8, segments: 16, material: 'dark' }));
+    }
   } else if (style === 'cow') {
     const tip = rig.tail.point(1);
     parts.push(sweepPart([rig.tail.point(0.9), add(tip, [0, -(T.hairLength ?? 0.1) * 0.5, 0]), add(tip, [0.01, -(T.hairLength ?? 0.1), 0])], profileFn('taper', [T.r0 * 0.4, T.r0 * 1.3, T.r0 * 0.4]), { radial: 10, segments: 10, material: 'dark' }));
@@ -390,8 +375,10 @@ function buildHooves(_r: SpecialRecipe, ctx: BuildCtx): Part[] {
     const tagged = () => parts.slice(start).forEach((p) => (p.segment = `${limb}_${S}_pastern`));
     if (P.digits === 'hoof') {
       const top: V3 = [coffin[0], coffin[1] + 0.012 * H, coffin[2]];
-      const bot: V3 = [ground[0] - 0.01 * H, 0.002, ground[2]];
-      parts.push(sweepPart([top, bot], profileFn('taper', [r.pastern * 1.02, r.hoof]), { radial: 18, segments: 4, material: 'hoof', aspect: 0.95, outward: [-1, 0, 0] }));
+      const bot: V3 = [ground[0] - 0.018 * H, 0.002, ground[2]];
+      parts.push(sweepPart([top, lerp3(top, bot, 0.5), bot], profileFn('taper', [r.pastern * 1.0, r.pastern * 1.15, r.hoof * 0.98]), { radial: 24, segments: 6, material: 'hoof', aspect: 0.92, outward: [-1, 0, 0] }));
+      // bulbs of the heel
+      for (const k of [-1, 1]) parts.push(ellPart([top[0] + 0.03 * H, top[1] - 0.005 * H, top[2] + k * r.pastern * 0.45], [0.018 * H, 0.014 * H, 0.014 * H], { material: 'pad', detail: 10 }));
     } else if (P.digits === 'cloven') {
       for (const k of [-1, 1]) {
         const top: V3 = [coffin[0], coffin[1] + 0.012 * H, coffin[2] + k * r.hoof * 0.42];
@@ -453,7 +440,9 @@ function buildSkull(r: SpecialRecipe, ctx: BuildCtx): Part[] {
           const tt = lerp(-0.02, 0.985, t);
           const sec = rig.head.section(Math.max(0, tt));
           const hk = tt < 0.3 ? 0.95 : 0.72 + 0.23 * Math.max(0, 1 - (tt - 0.3) / 0.15);
-          return { w: sec.w * k * (tt > 0.3 ? 0.92 : 1), h: sec.h * k * hk, n: 2.2 };
+          // cranium is rounded, the facial part is prismatic (flat nasal dorsum, flat palate)
+          const n = tt < 0.3 ? 2.1 : 2.1 + 0.8 * Math.min(1, (tt - 0.3) / 0.2);
+          return { w: sec.w * k * (tt > 0.3 ? 0.9 : 1), h: sec.h * k * hk, n, pear: tt > 0.35 ? 0.12 : 0 };
         },
         up: hd.up,
         segments: 30,
@@ -701,7 +690,7 @@ function buildScapula(r: SpecialRecipe, ctx: BuildCtx): Part[] {
     if (ctx.payload.meta.id === 'dog' || ctx.payload.meta.id === 'cat') parts.push(ellPart(f('acromion'), [0.012 * H, 0.012 * H, 0.01 * H], { detail: 10 }));
     parts.push(ellPart(sh, [0.026 * H, 0.02 * H, 0.026 * H], { detail: 14 }));
   } else {
-    const a = add(cr, [0, 0.005 * H, 0]), m = add(top, [0, 0.028 * H, 0]), b = add(cd, [0.01 * H, 0.01 * H, 0]);
+    const a = add(cr, [0, 0.004 * H, 0]), m = add(top, [0, 0.02 * H, 0]), b = add(cd, [0.01 * H, 0.008 * H, 0]);
     parts.push(sweepPart([a, m, b], profileFn('taper', [0.01 * H, 0.03 * H, 0.012 * H]), { aspect: 0.14, outward: [0, 0, sgn], radial: 10, segments: 14, material: 'cartilage' }));
   }
   return parts;

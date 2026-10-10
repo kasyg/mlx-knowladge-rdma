@@ -150,7 +150,29 @@ export interface SpecialRecipe {
   limb?: 'fl' | 'hl';
 }
 
-export type GeometryRecipe = SweepRecipe | EllipsoidRecipe | LoftRecipe | SpecialRecipe;
+/** corner of a muscle sheet in body-surface (u, v) space; landmark-based corners are projected onto the surface */
+export type CornerRef = [number, number] | { at: string; du?: number; dv?: number };
+
+/**
+ * Superficial muscle as a Coons patch on a body-surface part. u: 0 dorsal,
+ * 0.25 left (limbs: 0 cranial, 0.25 lateral), v: 0..1 along the part. Numeric
+ * corners describe the LEFT side and are mirrored for the right side.
+ * Corner order: origin edge (c0 → c1), insertion edge (c3 → c2); fibres run c0→c3.
+ */
+export interface SheetRecipe {
+  type: 'sheet';
+  part: 'trunk' | 'neck' | 'head' | 'fl' | 'hl';
+  corners: [CornerRef, CornerRef, CornerRef, CornerRef];
+  mids?: (CornerRef | null)[];
+  /** max thickness in H units */
+  bulge: number;
+  /** groove depth at the edges in H units */
+  dip?: number;
+  /** 1 = directly under the skin, 2/3 = deeper (avoids z-fighting with overlying sheets) */
+  layer?: number;
+}
+
+export type GeometryRecipe = SweepRecipe | EllipsoidRecipe | LoftRecipe | SpecialRecipe | SheetRecipe;
 
 export type MotionJoint = 'shoulder' | 'elbow' | 'carpus' | 'fetlock_fl' | 'hip' | 'stifle' | 'hock' | 'fetlock_hl';
 export type MotionAction = 'flexion' | 'extension';

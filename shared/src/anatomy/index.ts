@@ -51,6 +51,7 @@ export function validateSpecies(id: SpeciesId): string[] {
       if (r.type === 'sweep') r.path.forEach((p) => pointRefNames(p).forEach((n) => check(n, s.id)));
       else if (r.type === 'ellipsoid') pointRefNames(r.at).forEach((n) => check(n, s.id));
       else if (r.type === 'loft') r.axis.forEach((p) => pointRefNames(p).forEach((n) => check(n, s.id)));
+      else if (r.type === 'sheet') [...r.corners, ...(r.mids ?? [])].forEach((c) => c && !Array.isArray(c) && check(c.at, s.id));
     }
   }
   for (const reg of regions) pointRefNames(reg.anchor).forEach((n) => check(n, `region ${reg.id}`));
