@@ -24,14 +24,14 @@ export function strideAngles(limb: LimbKey, phase: number): MotionState {
   const angles = { shoulder: 0, elbow: 0, carpus: 0, fetlock: 0, pastern: 0, hip: 0, stifle: 0, hock: 0 } as Record<JointName, number>;
   if (fore) {
     angles.shoulder = -10 * Math.cos(w);            // protraction then retraction
-    angles.elbow = 32 * Math.pow(swing, 1.2);
-    angles.carpus = 68 * Math.pow(Math.max(0, Math.sin(w + 0.5)), 1.4) * (swing > 0 ? 1 : 0);
+    angles.elbow = 32 * Math.pow(swing, 1.2) - 4 * stanceK; // flexes in swing, extends under load
+    angles.carpus = 60 * Math.pow(Math.max(0, Math.sin(w + 0.5)), 1.4) * (swing > 0 ? 1 : 0) - 2 * stanceK;
     angles.fetlock = 22 * swing - 24 * stanceK;     // flexes in swing, hyper-extends under load
     angles.pastern = 8 * swing - 6 * stanceK;
   } else {
     angles.hip = -14 * Math.cos(w);
-    angles.stifle = 36 * Math.pow(swing, 1.1);
-    angles.hock = 40 * Math.pow(Math.max(0, Math.sin(w + 0.3)), 1.3) * (swing > 0 ? 1 : 0);
+    angles.stifle = 36 * Math.pow(swing, 1.1) - 5 * stanceK; // flexes in swing, extends at push-off
+    angles.hock = 40 * Math.pow(Math.max(0, Math.sin(w + 0.3)), 1.3) * (swing > 0 ? 1 : 0) - 6 * stanceK;
     angles.fetlock = 20 * swing - 24 * stanceK;
     angles.pastern = 8 * swing - 6 * stanceK;
   }

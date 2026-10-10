@@ -145,7 +145,7 @@ function buildSheet(r: SheetRecipe, ctx: BuildCtx): Part {
     corners,
     mids,
     bulge: r.bulge * H,
-    dip: (r.dip ?? 0.0055) * H,
+    dip: (r.dip ?? 0.0035) * H,
     skinOffset: 0.0035 * H + (layer - 1) * 0.006 * H,
     tile: 0.05 * H,
   });
@@ -378,7 +378,7 @@ function buildHooves(_r: SpecialRecipe, ctx: BuildCtx): Part[] {
       const bot: V3 = [ground[0] - 0.018 * H, 0.002, ground[2]];
       parts.push(sweepPart([top, lerp3(top, bot, 0.5), bot], profileFn('taper', [r.pastern * 1.0, r.pastern * 1.15, r.hoof * 0.98]), { radial: 24, segments: 6, material: 'hoof', aspect: 0.92, outward: [-1, 0, 0] }));
       // bulbs of the heel
-      for (const k of [-1, 1]) parts.push(ellPart([top[0] + 0.03 * H, top[1] - 0.005 * H, top[2] + k * r.pastern * 0.45], [0.018 * H, 0.014 * H, 0.014 * H], { material: 'pad', detail: 10 }));
+      for (const k of [-1, 1]) parts.push(ellPart([top[0] + 0.022 * H, top[1] - 0.004 * H, top[2] + k * r.pastern * 0.42], [0.013 * H, 0.011 * H, 0.011 * H], { material: 'hoof', detail: 10 }));
     } else if (P.digits === 'cloven') {
       for (const k of [-1, 1]) {
         const top: V3 = [coffin[0], coffin[1] + 0.012 * H, coffin[2] + k * r.hoof * 0.42];
@@ -460,7 +460,14 @@ function buildSkull(r: SpecialRecipe, ctx: BuildCtx): Part[] {
       const zy = rig.landmarks[`skull_zygoma_${S}`];
       const tmj = rig.landmarks[`skull_tmj_${S}`];
       parts.push(sweepPart([add(orbit, [0.012 * H, -er * 0.9, sgn * 0.004 * H]), add(zy, [0, 0.005 * H, 0]), add(tmj, [0, 0.012 * H, 0])], constRadius(0.008 * H), { radial: 8, segments: 10, aspect: 0.6, outward: [0, 0, sgn] }));
-      parts.push(ellPart(rig.landmarks[`skull_mastoid_${S}`], [0.012 * H, 0.012 * H, 0.008 * H], { detail: 10 }));
+      parts.push(ellPart(add(rig.landmarks[`skull_mastoid_${S}`], [0, 0, -sgn * 0.006 * H]), [0.01 * H, 0.01 * H, 0.007 * H], { detail: 10 }));
+      if (ctx.payload.meta.id === 'horse' || ctx.payload.meta.id === 'cow') {
+        // facial crest: a sharp ridge running rostrally from below the orbit along the maxilla
+        const s6 = rig.head.section(0.62), s5 = rig.head.section(0.5);
+        const crestEnd = add(add(hd.origin, mul(hd.dir, 0.64 * hd.length)), add(mul(hd.up, (s6.yOff ?? 0) - s6.h * k * 0.3), [0, 0, sgn * s6.w * k * 0.98]));
+        const crestMid = add(add(hd.origin, mul(hd.dir, 0.52 * hd.length)), add(mul(hd.up, (s5.yOff ?? 0) - s5.h * k * 0.22), [0, 0, sgn * s5.w * k * 1.0]));
+        parts.push(sweepPart([add(zy, [0, -0.002 * H, sgn * 0.004 * H]), crestMid, crestEnd], profileFn('taper', [0.007 * H, 0.006 * H, 0.003 * H]), { radial: 8, segments: 10, aspect: 0.55, outward: [0, 0, sgn] }));
+      }
       // dark recess suggesting the orbit cavity
       parts.push(ellPart(add(orbit, [0, 0, -sgn * er * 0.25]), [er * 0.8, er * 0.8, er * 0.6], { material: 'pad', detail: 14 }));
     }
@@ -485,8 +492,22 @@ function buildSkull(r: SpecialRecipe, ctx: BuildCtx): Part[] {
     for (const S of ['L', 'R'] as Side[]) {
       const sgn = S === 'L' ? 1 : -1;
       const tmj = rig.landmarks[`skull_tmj_${S}`];
-      parts.push(ellPart(tmj, [0.014 * H, 0.012 * H, 0.014 * H], { detail: 10 }));
+      parts.push(ellPart(add(tmj, [0, 0, -sgn * 0.004 * H]), [0.012 * H, 0.009 * H, 0.011 * H], { detail: 10 }));
       parts.push(sweepPart([add(tmj, [-0.035 * H, -0.01 * H, sgn * -0.002 * H]), add(tmj, [-0.045 * H, 0.035 * H, 0])], profileFn('taper', [0.014 * H, 0.004 * H]), { radial: 8, segments: 4, aspect: 0.4, outward: [0, 0, sgn] }));
+      // ramus: a broad, thin vertical plate from the angle of the jaw up to the joint
+      const angle = rig.landmarks[`mandible_angle_${S}`];
+      const ramusAxis: V3[] = [add(angle, [0.005 * H, 0.0, sgn * 0.002 * H]), lerp3(angle, tmj, 0.5), add(tmj, [-0.01 * H, -0.008 * H, 0])];
+      const ramusW = len(sub(tmj, angle)) * 0.42;
+      parts.push({
+        geometry: loftGeometry({
+          axis: ramusAxis,
+          section: (t) => ({ w: ramusW * (0.75 + 0.35 * Math.sin(Math.PI * Math.min(1, t * 1.1)) + (t < 0.15 ? 0.3 * (0.15 - t) / 0.15 : 0)), h: 0.005 * H + th * 0.25 * (1 - t), n: 2.8 }),
+          up: [0, 0, sgn],
+          segments: 12,
+          radial: 20,
+        }),
+        material: 'default',
+      });
     }
   } else if (r.part === 'teeth') {
     const secTop = (t: number) => rig.head.section(t);

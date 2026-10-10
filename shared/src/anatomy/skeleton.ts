@@ -41,6 +41,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'dentes',
+    covered: true,
     ...BONE,
     systems: ['digestive'],
     regions: ['mouth'],
@@ -61,6 +62,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'os_hyoideum',
+    covered: true,
     ...BONE,
     regions: ['head', 'neck'],
     priority: 3,
@@ -93,6 +95,7 @@ export const skeleton: StructureDef[] = [
   // ------------------------------------------------------------------ spine
   {
     id: 'atlas',
+    covered: true,
     ...BONE,
     regions: ['neck', 'head'],
     priority: 7,
@@ -105,6 +108,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'axis',
+    covered: true,
     ...BONE,
     regions: ['neck'],
     priority: 6,
@@ -117,6 +121,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'vertebrae_cervicales',
+    covered: true,
     ...BONE,
     regions: ['neck'],
     priority: 7,
@@ -129,6 +134,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'vertebrae_thoracicae',
+    covered: true,
     ...BONE,
     regions: ['thorax', 'back'],
     priority: 8,
@@ -146,6 +152,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'vertebrae_lumbales',
+    covered: true,
     ...BONE,
     regions: ['back', 'abdomen'],
     priority: 8,
@@ -163,6 +170,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'os_sacrum',
+    covered: true,
     ...BONE,
     regions: ['pelvis', 'back'],
     priority: 7,
@@ -187,6 +195,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'costae',
+    covered: true,
     ...BONE,
     regions: ['thorax'],
     bilateral: true,
@@ -205,6 +214,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'sternum',
+    covered: true,
     ...BONE,
     regions: ['thorax'],
     priority: 7,
@@ -219,6 +229,7 @@ export const skeleton: StructureDef[] = [
   // --------------------------------------------------------------- forelimb
   {
     id: 'scapula',
+    covered: true,
     ...BONE,
     regions: ['forelimb', 'thorax'],
     bilateral: true,
@@ -237,6 +248,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'humerus',
+    covered: true,
     ...BONE,
     regions: ['forelimb'],
     bilateral: true,
@@ -255,6 +267,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'radius',
+    covered: true,
     ...BONE,
     regions: ['forelimb'],
     bilateral: true,
@@ -268,6 +281,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'ulna',
+    covered: true,
     ...BONE,
     regions: ['forelimb'],
     bilateral: true,
@@ -286,6 +300,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'ulna',
+    covered: true,
     ...BONE,
     regions: ['forelimb'],
     bilateral: true,
@@ -407,6 +422,7 @@ export const skeleton: StructureDef[] = [
   // --------------------------------------------------------------- hindlimb
   {
     id: 'os_coxae',
+    covered: true,
     ...BONE,
     regions: ['pelvis', 'hindlimb'],
     bilateral: true,
@@ -420,6 +436,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'femur',
+    covered: true,
     ...BONE,
     regions: ['hindlimb'],
     bilateral: true,
@@ -434,6 +451,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'patella',
+    covered: true,
     ...BONE,
     regions: ['hindlimb'],
     bilateral: true,
@@ -448,6 +466,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'tibia',
+    covered: true,
     ...BONE,
     regions: ['hindlimb'],
     bilateral: true,
@@ -461,6 +480,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'fibula',
+    covered: true,
     ...BONE,
     regions: ['hindlimb'],
     bilateral: true,
@@ -479,6 +499,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'fibula',
+    covered: true,
     ...BONE,
     regions: ['hindlimb'],
     bilateral: true,
@@ -600,6 +621,7 @@ export const skeleton: StructureDef[] = [
   // ================================================================ cartilage
   {
     id: 'cartilago_scapulae',
+    covered: true,
     ...CART,
     regions: ['forelimb', 'thorax'],
     bilateral: true,
@@ -614,6 +636,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'cartilagines_costales',
+    covered: true,
     ...CART,
     regions: ['thorax', 'abdomen'],
     bilateral: true,
@@ -627,6 +650,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'cartilago_xiphoidea',
+    covered: true,
     ...CART,
     regions: ['thorax', 'abdomen'],
     priority: 3,
@@ -636,6 +660,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'disci_intervertebrales',
+    covered: true,
     ...CART,
     regions: ['back', 'neck', 'tail'],
     priority: 4,
@@ -648,6 +673,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'menisci',
+    covered: true,
     ...CART,
     regions: ['hindlimb'],
     bilateral: true,
@@ -661,6 +687,7 @@ export const skeleton: StructureDef[] = [
   },
   {
     id: 'cartilago_articularis',
+    covered: true,
     ...CART,
     regions: ['forelimb', 'hindlimb'],
     bilateral: true,

@@ -87,7 +87,7 @@ export const vascular: StructureDef[] = [
     priority: 4,
     names: { la: 'A. facialis', cs: 'Lícní tepna', en: 'Facial artery' },
     description: { cs: 'Ohýbá se přes spodní okraj dolní čelisti před žvýkacím svalem – u koně klasické místo měření tepu.', en: 'Curls over the ventral border of the mandible in front of the masseter – the classic pulse point in the horse.' },
-    geometry: { type: 'sweep', path: [{ at: 'mandible_angle_{S}', dx: 0.012, dy: -0.03 }, { at: 'mandible_body_{S}', dy: -0.02, lat: 0.012 }, { at: 'cheek_{S}', dy: -0.02 }, { at: 'nostril_{S}', lat: 0.012 }], r: 0.004, profile: 'tube' },
+    geometry: { type: 'sweep', path: [{ at: 'mandible_angle_{S}', dx: 0.012, dy: -0.03 }, { at: 'mandible_body_{S}', dy: -0.012, lat: 0.012 }, { between: ['mandible_body_{S}', 'nostril_{S}'], t: 0.5, dy: -0.01, lat: 0.012 }, { at: 'nostril_{S}', dy: -0.006, lat: 0.012 }], r: 0.004, profile: 'tube' },
   },
   {
     id: 'a_subclavia_axillaris',
@@ -107,7 +107,7 @@ export const vascular: StructureDef[] = [
     priority: 5,
     names: { la: 'A. brachialis', cs: 'Pažní tepna', en: 'Brachial artery' },
     description: { cs: 'Pokračování podpažní tepny po vnitřní straně paže k lokti.', en: 'The continuation of the axillary artery along the medial arm to the elbow.' },
-    geometry: { type: 'sweep', path: ['fl_{S}_axilla', { at: 'fl_{S}_humerus_mid', lat: -0.035, dx: -0.012 }, { at: 'fl_{S}_elbow', lat: -0.03 }], r: 0.006, profile: 'tube' },
+    geometry: { type: 'sweep', path: ['fl_{S}_axilla', { at: 'fl_{S}_humerus_mid', lat: -0.035, dx: -0.012 }, { between: ['fl_{S}_humerus_mid', 'fl_{S}_elbow'], t: 0.7, lat: -0.033, dx: -0.004 }, { at: 'fl_{S}_elbow', lat: -0.03, dx: 0.004 }, { between: ['fl_{S}_elbow', 'fl_{S}_radius_mid'], t: 0.18, lat: -0.03, dx: 0.012 }], r: 0.006, profile: 'tube' },
   },
   {
     id: 'a_mediana',
@@ -117,7 +117,7 @@ export const vascular: StructureDef[] = [
     priority: 5,
     names: { la: 'A. mediana', cs: 'Střední tepna', en: 'Median artery' },
     description: { cs: 'Hlavní tepna předloktí na jeho vnitřní zadní straně; za zápěstím pokračuje jako dlaňové tepny.', en: 'The main artery of the forearm on its caudomedial side, continuing behind the carpus as the palmar arteries.' },
-    geometry: { type: 'sweep', path: [{ at: 'fl_{S}_elbow', lat: -0.03 }, { at: 'fl_{S}_radius_mid', dx: 0.02, lat: -0.028 }, { at: 'fl_{S}_carpus', dx: 0.022, lat: -0.02 }], r: 0.005, profile: 'tube' },
+    geometry: { type: 'sweep', path: [{ between: ['fl_{S}_humerus_mid', 'fl_{S}_elbow'], t: 0.85, lat: -0.032, dx: 0.0 }, { at: 'fl_{S}_elbow', lat: -0.03, dx: 0.004 }, { between: ['fl_{S}_elbow', 'fl_{S}_radius_mid'], t: 0.18, lat: -0.03, dx: 0.012 }, { at: 'fl_{S}_radius_mid', dx: 0.02, lat: -0.028 }, { at: 'fl_{S}_carpus', dx: 0.022, lat: -0.02 }], r: 0.005, profile: 'tube' },
   },
   {
     id: 'aa_digitales_palmares',
@@ -128,8 +128,8 @@ export const vascular: StructureDef[] = [
     names: { la: 'Aa. digitales palmares', cs: 'Dlaňové prstní tepny', en: 'Palmar digital arteries' },
     description: { cs: 'Vnitřní a zevní prstní tepna probíhají po stranách ohýbačových šlach ke kopytu; u koně se zde měří „tep na spěnce“ při laminitidě.', en: 'The medial and lateral digital arteries run along the flexor tendons to the hoof; in the horse the "digital pulse" is checked here in laminitis.' },
     geometry: [
-      { type: 'sweep', path: [{ at: 'fl_{S}_carpus', dx: 0.022, lat: -0.02 }, { at: 'fl_{S}_cannon_mid', dx: 0.02, lat: 0.02 }, { at: 'fl_{S}_fetlock', dx: 0.022, lat: 0.022 }, { at: 'fl_{S}_coffin', dx: 0.012, lat: 0.02 }], r: 0.0035, profile: 'tube' },
-      { type: 'sweep', path: [{ at: 'fl_{S}_carpus', dx: 0.022, lat: -0.02 }, { at: 'fl_{S}_cannon_mid', dx: 0.02, lat: -0.02 }, { at: 'fl_{S}_fetlock', dx: 0.022, lat: -0.022 }, { at: 'fl_{S}_coffin', dx: 0.012, lat: -0.02 }], r: 0.0035, profile: 'tube' },
+      { type: 'sweep', path: [{ at: 'fl_{S}_carpus', dx: 0.022, lat: -0.02 }, { at: 'fl_{S}_cannon_mid', dx: 0.02, lat: -0.018 }, { at: 'fl_{S}_fetlock', dx: 0.022, lat: -0.022 }, { at: 'fl_{S}_coffin', dx: 0.012, lat: -0.02 }], r: 0.0035, profile: 'tube' },
+      { type: 'sweep', path: [{ at: 'fl_{S}_cannon_mid', dx: 0.02, lat: -0.018 }, { between: ['fl_{S}_cannon_mid', 'fl_{S}_fetlock'], t: 0.45, dx: 0.023 }, { at: 'fl_{S}_fetlock', dx: 0.022, lat: 0.022 }, { at: 'fl_{S}_coffin', dx: 0.012, lat: 0.02 }], r: 0.0035, profile: 'tube' },
     ],
   },
   {
@@ -160,7 +160,7 @@ export const vascular: StructureDef[] = [
     priority: 6,
     names: { la: 'A. femoralis', cs: 'Stehenní tepna', en: 'Femoral artery' },
     description: { cs: 'Probíhá stehenním kanálem na vnitřní straně stehna; u psa a kočky se zde měří tep.', en: 'Runs in the femoral canal on the medial thigh; the pulse point of the dog and cat.' },
-    geometry: { type: 'sweep', path: ['hl_{S}_groin', { at: 'hl_{S}_thigh_medial', dx: -0.012 }, { at: 'hl_{S}_stifle', dx: 0.03, lat: -0.02 }], r: 0.007, profile: 'tube' },
+    geometry: { type: 'sweep', path: ['hl_{S}_groin', { at: 'hl_{S}_thigh_medial', dx: -0.012 }, { between: ['hl_{S}_thigh_medial', 'hl_{S}_stifle'], t: 0.7, dx: 0.012, lat: -0.03 }, { at: 'hl_{S}_stifle', dx: 0.03, lat: -0.02 }, { at: 'hl_{S}_tibia_prox', dx: 0.024, lat: -0.012 }], r: 0.007, profile: 'tube' },
   },
   {
     id: 'a_poplitea_tibialis',
@@ -170,7 +170,7 @@ export const vascular: StructureDef[] = [
     priority: 4,
     names: { la: 'A. poplitea et a. tibialis cranialis', cs: 'Zákolenní a přední holenní tepna', en: 'Popliteal and cranial tibial artery' },
     description: { cs: 'Za kolenem pokračuje stehenní tepna jako zákolenní; její hlavní větev proniká na přední stranu bérce a jde přes hlezno na nárt.', en: 'Behind the stifle the femoral continues as the popliteal; its main branch passes to the cranial crus and over the hock onto the metatarsus.' },
-    geometry: { type: 'sweep', path: [{ at: 'hl_{S}_stifle', dx: 0.03, lat: -0.02 }, { at: 'hl_{S}_tibia_prox', dx: 0.02, lat: -0.012 }, { at: 'hl_{S}_tibia_mid', dx: -0.02, lat: 0.012 }, { at: 'hl_{S}_hock_cranial', lat: 0.012 }], r: 0.005, profile: 'tube' },
+    geometry: { type: 'sweep', path: [{ between: ['hl_{S}_thigh_medial', 'hl_{S}_stifle'], t: 0.85, dx: 0.02, lat: -0.026 }, { at: 'hl_{S}_stifle', dx: 0.03, lat: -0.02 }, { at: 'hl_{S}_tibia_prox', dx: 0.024, lat: -0.012 }, { at: 'hl_{S}_tibia_mid', dx: -0.012, lat: 0.008 }, { between: ['hl_{S}_tibia_mid', 'hl_{S}_hock'], t: 0.6, dx: -0.024, lat: 0.012 }, { at: 'hl_{S}_hock_cranial', lat: 0.012 }], r: 0.005, profile: 'tube' },
   },
   {
     id: 'aa_digitales_plantares',
@@ -181,8 +181,8 @@ export const vascular: StructureDef[] = [
     names: { la: 'Aa. digitales plantares', cs: 'Plantární prstní tepny', en: 'Plantar digital arteries' },
     description: { cs: 'Prstní tepny pánevní končetiny po stranách ohýbačových šlach.', en: 'The digital arteries of the hindlimb along the flexor tendons.' },
     geometry: [
-      { type: 'sweep', path: [{ at: 'hl_{S}_hock_cranial', lat: 0.012 }, { at: 'hl_{S}_cannon_mid', dx: 0.016, lat: 0.02 }, { at: 'hl_{S}_fetlock', dx: 0.022, lat: 0.022 }, { at: 'hl_{S}_coffin', dx: 0.012, lat: 0.02 }], r: 0.0035, profile: 'tube' },
-      { type: 'sweep', path: [{ at: 'hl_{S}_hock_cranial', lat: 0.012 }, { at: 'hl_{S}_cannon_mid', dx: 0.016, lat: -0.02 }, { at: 'hl_{S}_fetlock', dx: 0.022, lat: -0.022 }, { at: 'hl_{S}_coffin', dx: 0.012, lat: -0.02 }], r: 0.0035, profile: 'tube' },
+      { type: 'sweep', path: [{ at: 'hl_{S}_hock_cranial', lat: 0.012 }, { at: 'hl_{S}_cannon_mid', dx: -0.012, lat: 0.02 }, { between: ['hl_{S}_cannon_mid', 'hl_{S}_fetlock'], t: 0.6, dx: 0.012, lat: 0.02 }, { at: 'hl_{S}_fetlock', dx: 0.022, lat: 0.022 }, { at: 'hl_{S}_coffin', dx: 0.012, lat: 0.02 }], r: 0.0035, profile: 'tube' },
+      { type: 'sweep', path: [{ between: ['hl_{S}_cannon_mid', 'hl_{S}_fetlock'], t: 0.6, dx: 0.012, lat: 0.02 }, { between: ['hl_{S}_cannon_mid', 'hl_{S}_fetlock'], t: 0.8, dx: 0.022, lat: 0.0 }, { at: 'hl_{S}_fetlock', dx: 0.022, lat: -0.022 }, { at: 'hl_{S}_coffin', dx: 0.012, lat: -0.02 }], r: 0.0035, profile: 'tube' },
     ],
   },
   {
@@ -258,7 +258,7 @@ export const vascular: StructureDef[] = [
     priority: 6,
     names: { la: 'V. cephalica', cs: 'Hlavová žíla (přední končetiny)', en: 'Cephalic vein' },
     description: { cs: 'Povrchová žíla na přední vnitřní straně předloktí; u psa a kočky nejčastější místo pro kanylu a odběr krve.', en: 'A superficial vein on the craniomedial forearm; in the dog and cat the usual site for catheters and blood sampling.' },
-    geometry: { type: 'sweep', path: [{ at: 'fl_{S}_carpus', dx: -0.012, lat: -0.026 }, { at: 'fl_{S}_radius_mid', dx: -0.02, lat: -0.03 }, { at: 'fl_{S}_elbow', dx: -0.03, lat: -0.025 }, { at: 'fl_{S}_shoulder', dx: -0.03, dy: -0.03, lat: -0.012 }, { at: 'thoracic_inlet', dy: -0.04, lat: 0.02 }], r: 0.005, profile: 'tube' },
+    geometry: { type: 'sweep', path: [{ at: 'fl_{S}_carpus', dx: -0.012, lat: -0.026 }, { at: 'fl_{S}_radius_mid', dx: -0.02, lat: -0.03 }, { between: ['fl_{S}_radius_mid', 'fl_{S}_elbow'], t: 0.6, dx: -0.026, lat: -0.028 }, { at: 'fl_{S}_elbow', dx: -0.03, lat: -0.025 }, { between: ['fl_{S}_elbow', 'fl_{S}_shoulder'], t: 0.5, dx: -0.034, lat: -0.02 }, { at: 'fl_{S}_shoulder', dx: -0.03, dy: -0.03, lat: -0.012 }, { at: 'thoracic_inlet', dy: -0.04, lat: 0.02 }], r: 0.005, profile: 'tube' },
   },
   {
     id: 'v_saphena',
@@ -268,7 +268,7 @@ export const vascular: StructureDef[] = [
     priority: 5,
     names: { la: 'V. saphena (medialis / lateralis)', cs: 'Safénová žíla', en: 'Saphenous vein' },
     description: { cs: 'Povrchová žíla bérce; u psa se zevní safénová žíla nad hleznem používá pro nitrožilní vstup.', en: 'A superficial vein of the crus; in the dog the lateral saphenous above the hock is used for venous access.' },
-    geometry: { type: 'sweep', path: [{ at: 'hl_{S}_hock', dx: -0.012, lat: -0.03 }, { at: 'hl_{S}_tibia_mid', dx: 0.012, lat: -0.03 }, { at: 'hl_{S}_stifle', dx: 0.03, lat: -0.03 }, { at: 'hl_{S}_thigh_medial', dx: 0.012 }], r: 0.005, profile: 'tube' },
+    geometry: { type: 'sweep', path: [{ at: 'hl_{S}_hock', dx: -0.012, lat: -0.03 }, { at: 'hl_{S}_tibia_mid', dx: 0.012, lat: -0.03 }, { between: ['hl_{S}_tibia_mid', 'hl_{S}_stifle'], t: 0.6, dx: 0.024, lat: -0.03 }, { at: 'hl_{S}_stifle', dx: 0.03, lat: -0.03 }, { between: ['hl_{S}_stifle', 'hl_{S}_thigh_medial'], t: 0.5, dx: 0.02, lat: -0.012 }, { at: 'hl_{S}_thigh_medial', dx: 0.012 }], r: 0.005, profile: 'tube' },
   },
   {
     id: 'v_femoralis_iliaca',
@@ -540,7 +540,7 @@ export const digestive: StructureDef[] = [
     priority: 6,
     names: { la: 'Lien (splen)', cs: 'Slezina', en: 'Spleen' },
     description: { cs: 'Lymfatický orgán vlevo pod posledními žebry; zásobárna krve a místo odbourávání starých erytrocytů. U koně se při zátěži smrští a vyplaví krvinky do oběhu.', en: 'A lymphatic organ on the left beneath the last ribs; a blood reservoir and the site of erythrocyte breakdown. In the horse it contracts during exercise, releasing red cells into circulation.' },
-    geometry: { type: 'ellipsoid', at: { at: 'spleen', dy: -0.06, dz: -0.03 }, size: [0.035, 0.11, 0.014], rot: [0, 0, 0.5] },
+    geometry: { type: 'ellipsoid', at: { at: 'spleen', dy: -0.09, dz: -0.03 }, size: [0.03, 0.085, 0.012], rot: [0, 0, 0.5] },
   },
 ];
 

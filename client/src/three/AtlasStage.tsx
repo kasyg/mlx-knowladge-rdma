@@ -16,6 +16,8 @@ export const atlasRuntime = {
   /** per-instance current dissolve for smooth transitions */
   cur: new Map<string, { dissolve: number; dim: number; hi: number }>(),
   motionLimb: null as LimbKey | null,
+  /** smoothed dissolve of the muscle layer (drives what the muscles cover) */
+  musclesCur: 0,
   frame: 0,
 };
 if (typeof window !== 'undefined') (window as unknown as { __vetatlasRuntime?: unknown }).__vetatlasRuntime = atlasRuntime;
@@ -97,6 +99,11 @@ export function AtlasStage() {
     const skinGhost = s.ghostSkin && anySystem;
     // an intact, opaque skin covers everything beneath it (and saves a lot of fill rate)
     const skinCovers = skinTarget === 0 && skinCur < 0.03;
+    const musclesTarget = layerDissolve('muscles', d, s.layerMode.muscles);
+    atlasRuntime.musclesCur += (musclesTarget - atlasRuntime.musclesCur) * k;
+    if (Math.abs(musclesTarget - atlasRuntime.musclesCur) < 0.004) atlasRuntime.musclesCur = musclesTarget;
+    // intact muscles hide the bones and cartilage that lie beneath them (axial skeleton, girdles, joints)
+    const musclesCover = musclesTarget === 0 && atlasRuntime.musclesCur < 0.03;
     for (const inst of m.instances) {
       const g = inst.group;
       let target: number;
@@ -108,6 +115,11 @@ export function AtlasStage() {
         const pinned = LAYER_IDS.includes(g as LayerId) && s.layerMode[g as LayerId] === 'on';
         const isSystem = !LAYER_IDS.includes(g as LayerId) || !!inst.def.systems?.some((sys) => s.systems[sys]);
         if (!pinned && !(isSystem && skinGhost)) target = 1;
+      }
+      if (musclesCover && inst.def.covered && (g === 'bones' || g === 'cartilage')) {
+        const pinned = s.layerMode[g as LayerId] === 'on';
+        const isSystem = !!inst.def.systems?.some((sys) => s.systems[sys]);
+        if (!pinned && !isSystem) target = 1;
       }
       let cur = atlasRuntime.cur.get(inst.key);
       if (!cur) {

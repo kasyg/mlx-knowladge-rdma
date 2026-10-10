@@ -45,7 +45,14 @@ docs/     screenshoty z ověření
   (hnědák s černými odznaky, holštýnské skvrny, mourovaté pruhy…),
 - kostra (lebka, dolní čelist, zuby, obratle s trny a příčnými výběžky, žebra, hrudní kost, lopatka, pánev, dlouhé kosti, zápěstní/zánártní
   kůstky, záprstí dle druhu – jedna holenní kost + bodcové kosti / srostlá kost paznehtníků / 5 záprstních kostí, články prstů, sezamské kosti),
-- svaly (vřetenovité „sweep“ geometrie mezi začátkem a úponem), šlachy, vazy, cévy, nervy, orgány.
+- svaly: u koně jako **svalové pláty** (`shared/src/anatomy/sheets_horse.ts`) – Coonsovy plochy definované v souřadnicích
+  parametrického povrchu těla (`client/src/three/surface.ts`), vytlačené dovnitř s klenutou tloušťkou, rýhami na okrajích a texturou
+  vláken; kůže i pláty vycházejí ze stejného povrchu, takže na sebe přesně navazují (povrchové svaly dle écorché: m. trapezius,
+  latissimus dorsi, serratus ventralis, obliquus externus, gluteální svaly, triceps, extenzory a flexory předloktí, biceps femoris,
+  semitendinosus, gastrocnemius, žvýkací a mimické svaly…). U ostatních druhů zatím vřetenovité „sweep“ geometrie mezi začátkem
+  a úponem. Dále šlachy (zploštělé šlachy ohýbačů a mezikostního vazu), vazy, cévy (hladké křivky přes klouby), nervy, orgány.
+- vrstvy se navzájem zakrývají: neporušená kůže skryje vše pod sebou, neporušená svalová vrstva skryje osovou kostru, pletence,
+  proximální dlouhé kosti, zuby a kloubní chrupavky (příznak `covered` ve `shared/src/anatomy/skeleton.ts`).
 
 Všechny „měkké“ struktury jsou definovány přes anatomické body (`shared/src/anatomy/*.ts`), takže se při animaci pohybu končetiny
 přepočítávají v reálném čase. Nahradit procedurální model skenovaným GLB modelem lze na úrovni `client/src/three/builders.ts`

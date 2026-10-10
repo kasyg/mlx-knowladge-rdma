@@ -102,8 +102,24 @@ export interface LimbSweepDef {
   outward: V3;
 }
 
-/** cross-section depth/width ratio along a limb: wide at the thigh/arm, deeper than wide below the elbow/stifle */
-const limbAspect = (tJoint: number) => (t: number) => (t < tJoint ? 0.82 + 0.1 * (t / tJoint) : 1.18);
+/**
+ * Cross-section depth/width ratio (cranio-caudal / lateral) along a limb.
+ * Quadruped limbs are deeper than wide everywhere: the thigh and arm carry their
+ * muscle mass in front of and behind the bone, the cannon is a flattened oval.
+ */
+const aspectCurve = (keys: [number, number][]) => (t: number) => {
+  if (t <= keys[0][0]) return keys[0][1];
+  for (let i = 1; i < keys.length; i++) {
+    if (t <= keys[i][0]) {
+      const x = (t - keys[i - 1][0]) / (keys[i][0] - keys[i - 1][0]);
+      const k = x * x * (3 - 2 * x);
+      return keys[i - 1][1] + (keys[i][1] - keys[i - 1][1]) * k;
+    }
+  }
+  return keys[keys.length - 1][1];
+};
+const FL_ASPECT = aspectCurve([[0, 1.3], [0.22, 1.35], [0.4, 1.4], [0.52, 1.32], [0.62, 1.18], [0.72, 1.12], [1, 1.08]]);
+const HL_ASPECT = aspectCurve([[0, 1.6], [0.2, 1.75], [0.4, 1.45], [0.52, 1.3], [0.64, 1.25], [0.74, 1.12], [1, 1.08]]);
 
 /** Skin sweep definition of a limb from (possibly animated) landmark positions. */
 export function skinLimbSweep(rig: Rig, lm: (name: string) => V3, limb: 'fl' | 'hl', side: Side): LimbSweepDef {
@@ -114,18 +130,18 @@ export function skinLimbSweep(rig: Rig, lm: (name: string) => V3, limb: 'fl' | '
     const f = (n: string) => lm(`fl_${side}_${n}`);
     const fr = P.forelimb.r;
     return {
-      points: [add(f('shoulder'), [0.05 * H, 0.15 * H, -0.03 * H * (side === 'L' ? 1 : -1)]), add(f('shoulder'), [0.015 * H, 0.06 * H, -0.012 * H * (side === 'L' ? 1 : -1)]), f('shoulder'), f('elbow'), f('radius_mid'), f('carpus'), f('cannon_mid'), f('fetlock'), f('pastern'), f('coffin')],
-      radii: [fr.upper * 1.15, fr.upper * 1.08, fr.upper, fr.joint1, fr.mid, fr.joint2 * k, fr.cannon * k, fr.fetlock * k, fr.pastern * k, fr.pastern * k * 0.95],
-      aspect: limbAspect(0.4),
+      points: [add(f('shoulder'), [0.05 * H, 0.15 * H, -0.035 * H * (side === 'L' ? 1 : -1)]), add(f('shoulder'), [0.015 * H, 0.06 * H, -0.014 * H * (side === 'L' ? 1 : -1)]), f('shoulder'), f('elbow'), f('radius_mid'), f('carpus'), f('cannon_mid'), f('fetlock'), f('pastern'), f('coffin')],
+      radii: [fr.upper * 0.92, fr.upper * 0.98, fr.upper * 0.95, fr.joint1 * 0.95, fr.mid * 0.95, fr.joint2 * 1.02, fr.cannon * k, fr.fetlock * k, fr.pastern * k, fr.pastern * k * 0.95],
+      aspect: FL_ASPECT,
       outward: [-1, 0, 0],
     };
   }
   const h = (n: string) => lm(`hl_${side}_${n}`);
   const hr = P.hindlimb.r;
   return {
-    points: [add(h('hip'), [-0.06 * H, 0.16 * H, -0.03 * H * (side === 'L' ? 1 : -1)]), add(h('hip'), [-0.03 * H, 0.08 * H, -0.012 * H * (side === 'L' ? 1 : -1)]), h('hip'), h('femur_mid'), h('stifle'), h('tibia_mid'), h('hock'), h('cannon_mid'), h('fetlock'), h('pastern'), h('coffin')],
-    radii: [hr.upper * 1.35, hr.upper * 1.25, hr.upper * 1.05, hr.upper * 0.8, hr.joint1, hr.mid, hr.joint2 * k, hr.cannon * k, hr.fetlock * k, hr.pastern * k, hr.pastern * k * 0.95],
-    aspect: limbAspect(0.42),
+    points: [add(h('hip'), [-0.06 * H, 0.16 * H, -0.045 * H * (side === 'L' ? 1 : -1)]), add(h('hip'), [-0.03 * H, 0.08 * H, -0.02 * H * (side === 'L' ? 1 : -1)]), h('hip'), h('femur_mid'), h('stifle'), h('tibia_mid'), h('hock'), h('cannon_mid'), h('fetlock'), h('pastern'), h('coffin')],
+    radii: [hr.upper * 0.78, hr.upper * 0.84, hr.upper * 0.8, hr.upper * 0.64, hr.joint1 * 0.85, hr.mid * 0.9, hr.joint2 * k, hr.cannon * k, hr.fetlock * k, hr.pastern * k, hr.pastern * k * 0.95],
+    aspect: HL_ASPECT,
     outward: [-1, 0, 0],
   };
 }

@@ -207,6 +207,8 @@ export interface StructureDef {
   flow?: 1 | -1;
   /** label priority (higher = shown first when decluttering) */
   priority?: number;
+  /** lies under the muscle layer: hidden while the muscles are intact (unless its layer is pinned on) */
+  covered?: boolean;
 }
 
 export interface RegionDef {

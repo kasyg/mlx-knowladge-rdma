@@ -12,11 +12,17 @@ const sheet = (part: SheetRecipe['part'], corners: SheetRecipe['corners'], bulge
 
 export const HORSE_SHEETS: Record<string, GeometryRecipe | GeometryRecipe[]> = {
   // ------------------------------------------------------------ head
-  m_masseter: sheet('head', [[0.19, 0.62], [0.2, 0.4], [0.43, 0.26], [0.41, 0.52]], 0.028, { layer: 1 }),
+  m_masseter: sheet('head', [[0.17, 0.64], [0.18, 0.38], [0.45, 0.25], [0.44, 0.55]], 0.028, { layer: 1 }),
   m_temporalis: sheet('head', [[0.08, 0.1], [0.2, 0.13], [0.2, 0.3], [0.07, 0.3]], 0.012, { layer: 1 }),
-  m_buccinator: sheet('head', [[0.27, 0.63], [0.4, 0.6], [0.42, 0.86], [0.31, 0.87]], 0.008, { layer: 1 }),
-  m_levator_labii_superioris: sheet('head', [[0.1, 0.5], [0.2, 0.52], [0.19, 0.93], [0.11, 0.93]], 0.007, { layer: 1 }),
-  m_zygomaticus: sheet('head', [[0.21, 0.46], [0.25, 0.46], [0.33, 0.85], [0.3, 0.85]], 0.004, { layer: 1 }),
+  m_buccinator: sheet('head', [[0.27, 0.64], [0.42, 0.59], [0.42, 0.9], [0.29, 0.9]], 0.008, { layer: 1 }),
+  m_levator_labii_superioris: sheet('head', [[0.11, 0.52], [0.2, 0.54], [0.19, 0.93], [0.11, 0.93]], 0.007, { layer: 2 }),
+  m_levator_nasolabialis: sheet('head', [[0.09, 0.48], [0.2, 0.5], [0.23, 0.94], [0.09, 0.95]], 0.006, { layer: 1 }),
+  m_depressor_labii_inferioris: sheet('head', [[0.42, 0.62], [0.49, 0.6], [0.49, 0.93], [0.43, 0.93]], 0.006, { layer: 1 }),
+  m_orbicularis_oris: [
+    sheet('head', [[0.08, 0.93], [0.5, 0.93], [0.5, 0.995], [0.08, 0.995]], 0.008, { layer: 1 }),
+    sheet('head', [[0.5, 0.93], [0.92, 0.93], [0.92, 0.995], [0.5, 0.995]], 0.008, { layer: 1 }),
+  ],
+  m_zygomaticus: sheet('head', [[0.2, 0.44], [0.26, 0.46], [0.29, 0.9], [0.23, 0.9]], 0.004, { layer: 1 }),
   // ------------------------------------------------------------ neck
   m_rhomboideus: [
     sheet('neck', [[-0.02, 0.02], [0.035, 0.02], [0.035, 0.78], [-0.02, 0.78]], 0.014, { layer: 1 }),
@@ -51,8 +57,8 @@ export const HORSE_SHEETS: Record<string, GeometryRecipe | GeometryRecipe[]> = {
   m_pectoralis_profundus: sheet('trunk', [[0.5, 0.14], [0.5, 0.46], [0.3, 0.12], [0.4, 0.05]], 0.016, { layer: 1, mids: [null, [0.38, 0.34], null, null] }),
   m_iliocostalis: sheet('trunk', [[0.1, 0.18], [0.11, 0.74], [0.14, 0.74], [0.13, 0.18]], 0.012, { layer: 2 }),
   m_spinalis: sheet('trunk', [[0.0, 0.12], [0.0, 0.6], [0.03, 0.6], [0.03, 0.12]], 0.02, { layer: 3 }),
-  m_gluteus_medius: sheet('trunk', [[0.0, 0.66], [0.0, 0.9], [0.17, 0.9], [0.22, 0.74]], 0.04, { layer: 1 }),
-  m_gluteus_superficialis: sheet('trunk', [[0.14, 0.76], [0.1, 0.87], [0.24, 0.92], [0.26, 0.82]], 0.012, { layer: 1 }),
+  m_gluteus_medius: sheet('trunk', [[0.0, 0.64], [0.0, 0.97], [0.2, 0.97], [0.25, 0.72]], 0.04, { layer: 1 }),
+  m_gluteus_superficialis: sheet('trunk', [[0.25, 0.74], [0.21, 0.9], [0.3, 0.95], [0.33, 0.8]], 0.012, { layer: 1 }),
   // ------------------------------------------------------------ forelimb
   m_supraspinatus: sheet('fl', [[-0.1, 0.0], [0.08, 0.0], [0.06, 0.2], [-0.08, 0.2]], 0.02, { layer: 2 }),
   m_infraspinatus: sheet('fl', [[0.1, 0.0], [0.3, 0.0], [0.27, 0.2], [0.12, 0.2]], 0.02, { layer: 2 }),

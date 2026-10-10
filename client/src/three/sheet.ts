@@ -105,8 +105,10 @@ export class SheetGeometry extends THREE.BufferGeometry {
         part.sample(u, v, p);
         part.normal(u, v, nrm);
         const dome = Math.pow(Math.sin(Math.PI * s), 0.8) * Math.pow(Math.sin(Math.PI * t), 0.7);
-        const outerDepth = spec.skinOffset + spec.dip * (1 - Math.pow(dome, 0.45));
-        const innerDepth = spec.skinOffset + 0.0012 + spec.bulge * dome;
+        const edge = 1 - Math.pow(dome, 0.45); // 1 at the rim, 0 in the belly
+        const outerDepth = spec.skinOffset + spec.dip * edge;
+        // the inner face always lies behind the outer one: a thin rim, a thick belly
+        const innerDepth = outerDepth + 0.0008 + spec.bulge * dome;
         const k = i * W + j;
         pos.setXYZ(k, p.x - nrm.x * outerDepth, p.y - nrm.y * outerDepth, p.z - nrm.z * outerDepth);
         pos.setXYZ(n + k, p.x - nrm.x * innerDepth, p.y - nrm.y * innerDepth, p.z - nrm.z * innerDepth);

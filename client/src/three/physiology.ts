@@ -89,11 +89,11 @@ export class PhysiologyDriver {
       u.uFlow.value = flowOn && playing ? 1 : 0;
       u.uTime.value = t;
     }
-    if (this.airParticles && this.airPath) {
+    if (this.airParticles && this.airPath && this.airParticles.visible) {
       const n = this.airParticles.count;
       const dir = Math.sin(t * rr * Math.PI * 2) >= 0 ? 1 : -1; // in during inspiration, out during expiration
       for (let i = 0; i < n; i++) {
-        const u = ((i / n) + (playing ? dir * t * 0.12 : 0) + 10) % 1;
+        const u = wrap01(i / n + (playing ? dir * t * 0.12 : 0));
         const p = this.airPath.getPointAt(u);
         this.dummy.position.copy(p).add(new THREE.Vector3(Math.sin(i * 12.9) * 0.004, Math.cos(i * 7.3) * 0.004, Math.sin(i * 3.1) * 0.004).multiplyScalar(this.model.rig.H));
         this.dummy.updateMatrix();
@@ -101,10 +101,10 @@ export class PhysiologyDriver {
       }
       this.airParticles.instanceMatrix.needsUpdate = true;
     }
-    if (this.foodParticles && this.foodPath) {
+    if (this.foodParticles && this.foodPath && this.foodParticles.visible) {
       const n = this.foodParticles.count;
       for (let i = 0; i < n; i++) {
-        const u = ((i / n) * 0.9 + (playing ? t * 0.02 : 0) + 10) % 1;
+        const u = wrap01((i / n) * 0.9 + (playing ? t * 0.02 : 0));
         const p = this.foodPath.getPointAt(u);
         this.dummy.position.copy(p);
         const s = u < 0.3 ? 1 : 1.35;
@@ -123,6 +123,9 @@ export class PhysiologyDriver {
     (this.foodParticles?.material as THREE.Material)?.dispose();
   }
 }
+
+/** fractional part that stays in [0, 1) for negative inputs too (curve parameters must never go negative) */
+const wrap01 = (x: number) => ((x % 1) + 1) % 1;
 
 /** two-bump heartbeat: atrial then ventricular contraction */
 function heartWave(p: number) {

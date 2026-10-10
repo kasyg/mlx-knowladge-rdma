@@ -188,8 +188,16 @@ function attach(page) {
   // limb motion
   await page.evaluate(() => { const s = window.__vetatlas.store.getState(); s.toggleSystem('vascular'); s.toggleSystem('respiratory'); s.toggleSystem('digestive'); s.setRegion('hindlimb_left'); s.setDepth(0.4); s.setMotionOn(true); });
   await waitFrames(page, 20);
-  const motion = await page.evaluate(() => { const r = window.__vetatlasRuntime; const piv = r.model.limbs.get('hl_L'); return { stifle: piv.joints.stifle.rotation.z, hock: piv.joints.hock.rotation.z, limb: r.motionLimb }; });
-  check('limb motion animates the hindlimb joints', motion.limb === 'hl_L' && (Math.abs(motion.stifle) > 0.001 || Math.abs(motion.hock) > 0.001), JSON.stringify(motion));
+  // sample the joint angles over several frames: the stride has a stance and a swing phase
+  const motion = { stifle: 0, hock: 0, limb: null };
+  for (let i = 0; i < 6; i++) {
+    const m = await page.evaluate(() => { const r = window.__vetatlasRuntime; const piv = r.model.limbs.get('hl_L'); return { stifle: piv.joints.stifle.rotation.z, hock: piv.joints.hock.rotation.z, limb: r.motionLimb }; });
+    motion.stifle = Math.max(motion.stifle, Math.abs(m.stifle));
+    motion.hock = Math.max(motion.hock, Math.abs(m.hock));
+    motion.limb = m.limb;
+    await waitFrames(page, 6);
+  }
+  check('limb motion animates the hindlimb joints', motion.limb === 'hl_L' && (motion.stifle > 0.001 || motion.hock > 0.001), JSON.stringify(motion));
   await page.screenshot({ path: join(OUT, 'desktop-09-motion.jpg'), type: 'jpeg', quality: 82 });
   await page.evaluate(() => window.__vetatlas.store.getState().setMotionOn(false));
 
