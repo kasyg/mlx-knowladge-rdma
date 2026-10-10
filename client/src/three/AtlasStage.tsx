@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import type { LayerId, SystemId } from '@shared/types';
 import { LAYER_IDS } from '@shared/types';
 import { useAtlas, models, layerDissolve, type IsoOpts } from '../state/store.ts';
-import type { AnimalModel } from './animal.ts';
+import type { AnimalModel, StructureInstance } from './animal.ts';
 import { updateSoftTissue } from './animal.ts';
 import { PhysiologyDriver } from './physiology.ts';
 import { strideAngles, applyPose, resetMotion, demoPlan, demoState, strideWeights, type DemoPlan, type DemoStage } from './motion.ts';
@@ -86,21 +86,65 @@ export function isolationMembers(sys: MuscleSystem, model: AnimalModel, key: str
       const jd = JOINTS.find((x) => x.id === j.id);
       for (const b of jd?.bones ?? []) for (const k of sys.keysOf(b, inst.side)) if (!out.has(k)) out.set(k, 'solid');
     }
-    const box = inst.box.clone().expandByScalar(0.015 * model.rig.H);
+    // bones the body of the structure really lies on: a good share of its surface within ~3 cm of the bone
+    // (the rib cage under the latissimus dorsi, but not under the biceps that only passes in front of it)
+    const near = 0.02 * model.rig.H;
+    const box = inst.box.clone().expandByScalar(near);
+    const own = surfaceSamples(inst, 240);
     for (const other of model.instances) {
       if (other.group !== 'bones' || out.has(other.key) || other.box.isEmpty()) continue;
       if (inst.side && other.side && other.side !== inst.side) continue;
       if (!box.intersectsBox(other.box)) continue;
-      // large bones only count when they overlap a good part of the structure (a rib cage behind a neck muscle does not)
-      const ov = box.clone().intersect(other.box);
-      const sz = new THREE.Vector3();
-      ov.getSize(sz);
-      const own = new THREE.Vector3();
-      inst.box.getSize(own);
-      if (sz.x * sz.y * sz.z > 0.08 * own.x * own.y * own.z || other.box.containsBox(inst.box)) out.set(other.key, 'solid');
+      if (nearShare(own, other, near) > 0.12) out.set(other.key, 'solid');
     }
   }
   return out;
+}
+
+/** up to about n world-space points spread over the surface of a structure (cords left out) */
+function surfaceSamples(inst: StructureInstance, n: number): THREE.Vector3[] {
+  const meshes = inst.meshes.filter((m) => !m.userData.cord);
+  let total = 0;
+  for (const m of meshes) total += m.geometry.attributes.position.count;
+  const out: THREE.Vector3[] = [];
+  if (!total) return out;
+  const stride = Math.max(1, Math.floor(total / n));
+  for (const m of meshes) {
+    m.updateWorldMatrix(true, false);
+    const pos = m.geometry.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i += stride) out.push(new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld));
+  }
+  return out;
+}
+
+/** share of the points that lie within d of the surface of a structure */
+function nearShare(points: THREE.Vector3[], other: StructureInstance, d: number): number {
+  if (!points.length) return 0;
+  const box = other.box.clone().expandByScalar(d);
+  const cand = points.filter((p) => box.containsPoint(p));
+  if (!cand.length) return 0;
+  const surf = surfaceSamples(other, 4000);
+  const d2 = d * d;
+  let hits = 0;
+  for (const p of cand) {
+    for (const q of surf) {
+      if (p.distanceToSquared(q) < d2) {
+        hits++;
+        break;
+      }
+    }
+  }
+  return hits / points.length;
+}
+
+/** what the camera frames in the isolation view: the structure and what it is fixed to */
+export function isolationFrame(sys: MuscleSystem, model: AnimalModel, key: string): string[] {
+  const inst = model.byKey.get(key);
+  if (!inst) return [key];
+  const roles = inst.def.kind === 'muscle' ? ['origin', 'insertion', 'tendon'] : inst.def.kind === 'tendon' || inst.def.kind === 'ligament' ? ['bone'] : [];
+  const keys = [key];
+  for (const c of connectionsOf(sys, model, key)) if (roles.includes(c.role) && !keys.includes(c.key)) keys.push(c.key);
+  return keys;
 }
 
 const PULSE_PLAN: DemoPlan = { limb: null, moves: [], period: 2.6 };
@@ -232,8 +276,7 @@ export function AtlasStage() {
       iso.key = s.isolated;
       iso.members = s.isolated ? isolationMembers(sys, m, s.isolated, s.isoOpts) : new Map();
       if (s.isolated && (!wasIsolated || iso.members.size)) {
-        const keys = [...iso.members.entries()].filter(([, r]) => r !== 'ghost').map(([k]) => k);
-        s.camera({ type: 'fitKeys', keys, focus: s.isolated });
+        s.camera({ type: 'fitKeys', keys: isolationFrame(sys, m, s.isolated), focus: s.isolated });
       }
     }
     const isoMembers = iso.key ? iso.members : null;

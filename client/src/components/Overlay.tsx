@@ -192,26 +192,48 @@ export function Overlay() {
     tmp.copy(cameraRuntime.focusCenter).project(cam);
     const centerX = (tmp.x * 0.5 + 0.5) * width;
     const sides = { L: labels.filter((p) => p.sx < centerX), R: labels.filter((p) => p.sx >= centerX) };
-    const top = compact ? 70 : 76;
+    let top = compact ? 70 : 76;
     const bottom = height - (compact ? 160 : 90);
-    for (const key of ['L', 'R'] as const) {
-      const col = sides[key].sort((a, b) => a.sy - b.sy);
+    // the live function readout is an obstacle: columns end above it (desktop) or start below it (phone)
+    const hud = (document.querySelector('.function-hud') as HTMLElement | null)?.getBoundingClientRect() ?? null;
+    if (hud && compact) top = Math.max(top, hud.bottom + 8);
+    const limits = {
+      L: hud && !compact && colL < hud.right && colL + 220 > hud.left ? Math.min(bottom, hud.top - 10) : bottom,
+      R: hud && !compact && colR - 220 < hud.right && colR > hud.left ? Math.min(bottom, hud.top - 10) : bottom,
+    };
+    const heightOf = (p: (typeof labels)[number]) => (nodes.current.get(p.item.key)?.offsetHeight || 30) + 6;
+    /** stack a column below its anchors; returns the labels that do not fit above its limit */
+    const stack = (col: typeof labels, limit: number): typeof labels => {
+      col.sort((a, b) => a.sy - b.sy);
       let y = top;
-      const hs = col.map((p) => (nodes.current.get(p.item.key)?.offsetHeight || 30) + 6);
+      const hs = col.map(heightOf);
       col.forEach((p, i) => {
-        const h = hs[i];
-        p.ly = Math.max(y + h / 2, p.sy);
-        y = p.ly + h / 2;
+        p.ly = Math.max(y + hs[i] / 2, p.sy);
+        y = p.ly + hs[i] / 2;
       });
-      const overflow = y - bottom;
+      const overflow = y - limit;
       if (overflow > 0 && col.length) {
         // shift the whole column up (keeping spacing) as far as the top allows
         const room = col[0].ly - hs[0] / 2 - top;
         const shift = Math.min(overflow, Math.max(0, room));
         for (const p of col) p.ly -= shift;
       }
-      for (const p of col) p.lx = key === 'L' ? colL : colR;
+      return col.filter((p, i) => p.ly + hs[i] / 2 > limit + 1);
+    };
+    const spillL = stack(sides.L, limits.L);
+    const spillR = stack(sides.R, limits.R);
+    // what does not fit moves to the other column, if that one has room
+    if (spillL.length && !spillR.length) {
+      sides.L = sides.L.filter((p) => !spillL.includes(p));
+      sides.R.push(...spillL);
+      stack(sides.R, limits.R);
+    } else if (spillR.length && !spillL.length) {
+      sides.R = sides.R.filter((p) => !spillR.includes(p));
+      sides.L.push(...spillR);
+      stack(sides.L, limits.L);
     }
+    for (const p of sides.L) p.lx = colL;
+    for (const p of sides.R) p.lx = colR;
     for (const p of placed) {
       const el = nodes.current.get(p.item.key);
       if (!el) continue;
