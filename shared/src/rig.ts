@@ -382,6 +382,33 @@ export function buildRig(params: RigParams): Rig {
     k('heel', add(XYv(fl.hoof, z), v(0.03 * H, 0.01 * H, 0)));
     k('axilla', add(XYv(fl.shoulder, z), v(0.06 * H, -0.06 * H, -sgn * 0.03 * H)));
     k('limb_center', lerp3(XYv(fl.elbow, z), XYv(fl.fetlock, z), 0.5));
+    // muscle attachment sites (origins / insertions), see anatomy/mechanics.ts
+    const lat = (d: number): V3 => v(0, 0, sgn * d * H);
+    const fsh = XYv(fl.shoulder, z), fel = XYv(fl.elbow, z), fca = XYv(fl.carpus, z), ffe = XYv(fl.fetlock, z), fpa = XYv(fl.pastern, z);
+    const fcof = lerp3(XYv(fl.pastern, z), XYv(fl.hoof, z), 0.5);
+    const fst = XYv(fl.scapulaTop, z * 0.85);
+    k('supraglenoid', add(fsh, v(-0.026 * H, 0.032 * H, 0)));
+    k('coracoid', add(add(fsh, v(-0.03 * H, 0.03 * H, 0)), lat(-0.014)));
+    k('scapula_fossa_cranial', add(add(lerp3(fst, fsh, 0.45), v(-0.045 * H, 0, 0)), lat(0.012)));
+    k('scapula_fossa_caudal', add(add(lerp3(fst, fsh, 0.42), v(0.05 * H, 0, 0)), lat(0.012)));
+    k('subscapular_fossa', add(add(lerp3(fst, fsh, 0.42), v(0.01 * H, 0, 0)), lat(-0.02)));
+    k('greater_tubercle', add(add(fsh, v(-0.036 * H, 0.012 * H, 0)), lat(0.016)));
+    k('lesser_tubercle', add(add(fsh, v(-0.03 * H, 0.004 * H, 0)), lat(-0.018)));
+    k('teres_tuberosity', add(add(lerp3(fsh, fel, 0.4), v(0.012 * H, 0, 0)), lat(-0.018)));
+    k('humerus_caudal', add(lerp3(fsh, fel, 0.5), v(0.024 * H, 0, 0)));
+    k('humerus_medial', add(lerp3(fsh, fel, 0.5), lat(-0.022)));
+    k('lateral_epicondyle', add(add(fel, v(0.01 * H, 0.016 * H, 0)), lat(0.028)));
+    k('medial_epicondyle', add(add(fel, v(0.012 * H, 0.014 * H, 0)), lat(-0.03)));
+    k('radial_tuberosity', add(add(lerp3(fel, fca, 0.07), v(-0.024 * H, 0, 0)), lat(-0.008)));
+    k('radius_lateral', add(add(lerp3(fel, fca, 0.35), v(-0.004 * H, 0, 0)), lat(0.02)));
+    k('radius_caudal', add(lerp3(fel, fca, 0.4), v(0.016 * H, 0, 0)));
+    k('mc3_tuberosity', add(add(lerp3(fca, ffe, 0.07), v(-0.022 * H, 0, 0)), lat(-0.004)));
+    k('mc4_head', add(add(lerp3(fca, ffe, 0.06), v(0.008 * H, 0, 0)), lat(0.02)));
+    k('mc2_head', add(add(lerp3(fca, ffe, 0.06), v(0.008 * H, 0, 0)), lat(-0.02)));
+    k('p1_dorsal', add(lerp3(ffe, fpa, 0.25), v(-0.02 * H, 0, 0)));
+    k('p2_palmar', add(lerp3(fpa, fcof, 0.25), v(0.02 * H, 0, 0)));
+    k('extensor_process', add(fcof, v(-0.024 * H, 0.014 * H, 0)));
+    k('p3_flexor', add(fcof, v(0.016 * H, -0.01 * H, 0)));
 
     const hz = sgn * hl.z;
     const h = (n: string, p: V3) => (L[`hl_${S}_${n}`] = p);
@@ -416,6 +443,28 @@ export function buildRig(params: RigParams): Rig {
     h('groin', add(XYv(hl.hip, hz), v(-0.02 * H, -0.1 * H, -sgn * 0.05 * H)));
     h('limb_center', lerp3(XYv(hl.stifle, hz), XYv(hl.fetlock, hz), 0.5));
     h('ischiatic_notch', add(lerp3([hl.tuberCoxae.x, hl.tuberCoxae.y, sgn * hl.tuberCoxae.z], [hl.tuberIschii.x, hl.tuberIschii.y, sgn * hl.tuberIschii.z], 0.55), v(0, 0.02 * H, 0)));
+    // muscle attachment sites (origins / insertions), see anatomy/mechanics.ts
+    const hhi = XYv(hl.hip, hz), hst = XYv(hl.stifle, hz), hho = XYv(hl.hock, hz), hfe = XYv(hl.fetlock, hz), hpa = XYv(hl.pastern, hz);
+    const hcof = lerp3(XYv(hl.pastern, hz), XYv(hl.hoof, hz), 0.5);
+    const htc: V3 = [hl.tuberCoxae.x, hl.tuberCoxae.y, sgn * hl.tuberCoxae.z];
+    h('ilium_body', add(add(hhi, v(-0.03 * H, 0.05 * H, 0)), lat(-0.004)));
+    h('iliac_wing', add(lerp3(htc, hhi, 0.3), v(0.035 * H, 0.03 * H, 0)));
+    h('lesser_trochanter', add(add(lerp3(hhi, hst, 0.16), v(0.004 * H, 0, 0)), lat(-0.026)));
+    h('femur_caudal', add(lerp3(hhi, hst, 0.55), v(0.022 * H, 0, 0)));
+    h('femur_cranial', add(lerp3(hhi, hst, 0.5), v(-0.02 * H, 0, 0)));
+    h('supracondylar', add(lerp3(hhi, hst, 0.84), v(0.028 * H, 0, 0)));
+    h('extensor_fossa', add(add(hst, v(-0.02 * H, 0.004 * H, 0)), lat(0.016)));
+    h('femur_medial_condyle', add(add(hst, v(0.01 * H, 0.01 * H, 0)), lat(-0.028)));
+    h('tibial_crest', add(lerp3(hst, hho, 0.22), v(-0.03 * H, 0, 0)));
+    h('tibia_medial', add(lerp3(hst, hho, 0.12), lat(-0.026)));
+    h('tibia_caudal', add(lerp3(hst, hho, 0.3), v(0.022 * H, 0, 0)));
+    h('fibula_head', add(add(lerp3(hst, hho, 0.1), v(0.006 * H, 0, 0)), lat(0.026)));
+    h('mt3_tuberosity', add(lerp3(hho, hfe, 0.08), v(-0.022 * H, 0, 0)));
+    h('tarsus_medial', add(add(hho, v(0, -0.02 * H, 0)), lat(-0.022)));
+    h('p1_dorsal', add(lerp3(hfe, hpa, 0.25), v(-0.02 * H, 0, 0)));
+    h('p2_palmar', add(lerp3(hpa, hcof, 0.25), v(0.02 * H, 0, 0)));
+    h('extensor_process', add(hcof, v(-0.024 * H, 0.014 * H, 0)));
+    h('p3_flexor', add(hcof, v(0.016 * H, -0.01 * H, 0)));
   }
 
   return {

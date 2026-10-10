@@ -11,6 +11,12 @@ const FL: Record<string, JointName | null> = {
   accessory_carpal: 'carpus', cannon_mid: 'carpus', cannon_prox: 'carpus', cannon_dist: 'carpus', fetlock: 'carpus',
   sesamoid: 'fetlock', pastern: 'fetlock',
   coffin: 'pastern', toe: 'pastern', heel: 'pastern', hoof: 'pastern',
+  supraglenoid: null, coracoid: null, scapula_fossa_cranial: null, scapula_fossa_caudal: null, subscapular_fossa: null,
+  greater_tubercle: 'shoulder', lesser_tubercle: 'shoulder', teres_tuberosity: 'shoulder', humerus_caudal: 'shoulder', humerus_medial: 'shoulder', lateral_epicondyle: 'shoulder', medial_epicondyle: 'shoulder',
+  radial_tuberosity: 'elbow', radius_lateral: 'elbow', radius_caudal: 'elbow',
+  mc3_tuberosity: 'carpus', mc4_head: 'carpus', mc2_head: 'carpus',
+  p1_dorsal: 'fetlock',
+  p2_palmar: 'pastern', extensor_process: 'pastern', p3_flexor: 'pastern',
 };
 const HL: Record<string, JointName | null> = {
   tuber_coxae: null, tuber_ischii: null, hip: null, ischiatic_notch: null, groin: null, limb_center: null,
@@ -19,6 +25,12 @@ const HL: Record<string, JointName | null> = {
   hock_cranial: 'hock', calcaneus: 'hock', cannon_mid: 'hock', cannon_prox: 'hock', cannon_dist: 'hock', fetlock: 'hock',
   sesamoid: 'fetlock', pastern: 'fetlock',
   coffin: 'pastern', toe: 'pastern', heel: 'pastern', hoof: 'pastern',
+  ilium_body: null, iliac_wing: null,
+  lesser_trochanter: 'hip', femur_caudal: 'hip', femur_cranial: 'hip', supracondylar: 'hip', extensor_fossa: 'hip', femur_medial_condyle: 'hip',
+  tibial_crest: 'stifle', tibia_medial: 'stifle', tibia_caudal: 'stifle', fibula_head: 'stifle',
+  mt3_tuberosity: 'hock', tarsus_medial: 'hock',
+  p1_dorsal: 'fetlock',
+  p2_palmar: 'pastern', extensor_process: 'pastern', p3_flexor: 'pastern',
 };
 
 /** Which limb segment a landmark moves with (null = static). */

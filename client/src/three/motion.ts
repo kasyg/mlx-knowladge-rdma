@@ -2,9 +2,7 @@ import type { AnimalModel } from './animal.ts';
 import { updateSoftTissue } from './animal.ts';
 import type { JointName, LimbKey } from './segments.ts';
 import type { MotionJoint } from '@shared/types';
-
-/** sign that turns a positive "flexion" angle into a rotation about +z for the left side */
-const FLEX_SIGN: Record<JointName, number> = { shoulder: -1, elbow: -1, carpus: 1, fetlock: 1, pastern: 1, hip: -1, stifle: -1, hock: -1 };
+import { FLEX_SIGN } from './pose.ts';
 
 export interface MotionState {
   phase: number; // 0..1 of the stride cycle
@@ -23,14 +21,14 @@ export function strideAngles(limb: LimbKey, phase: number): MotionState {
   const fore = limb.startsWith('fl');
   const angles = { shoulder: 0, elbow: 0, carpus: 0, fetlock: 0, pastern: 0, hip: 0, stifle: 0, hock: 0 } as Record<JointName, number>;
   if (fore) {
-    angles.shoulder = -10 * Math.cos(w);            // protraction then retraction
+    angles.shoulder = 10 * Math.cos(w);             // flexed (retracted) at lift-off, extends to protract the limb in the swing
     angles.elbow = 32 * Math.pow(swing, 1.2) - 4 * stanceK; // flexes in swing, extends under load
     angles.carpus = 60 * Math.pow(Math.max(0, Math.sin(w + 0.5)), 1.4) * (swing > 0 ? 1 : 0) - 2 * stanceK;
     angles.fetlock = 22 * swing - 24 * stanceK;     // flexes in swing, hyper-extends under load
     angles.pastern = 8 * swing - 6 * stanceK;
   } else {
     angles.hip = -14 * Math.cos(w);
-    angles.stifle = 36 * Math.pow(swing, 1.1) - 5 * stanceK; // flexes in swing, extends at push-off
+    angles.stifle = 36 * Math.pow(swing, 1.1) - 5 * stanceK; // flexes in swing (with the hock: reciprocal apparatus), extends at push-off
     angles.hock = 40 * Math.pow(Math.max(0, Math.sin(w + 0.3)), 1.3) * (swing > 0 ? 1 : 0) - 6 * stanceK;
     angles.fetlock = 20 * swing - 24 * stanceK;
     angles.pastern = 8 * swing - 6 * stanceK;
