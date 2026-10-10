@@ -1,1 +1,193 @@
-# mlx-knowladge-rdma
+# VetAtlas 3D
+
+Interaktivní 3D anatomický atlas zvířat pro studenty veterinární medicíny – kůň, skot, koza, pes a kočka.
+Web aplikace funguje na mobilu, tabletu i počítači (responzivní UI, dotykové ovládání, haptická odezva).
+
+## Co aplikace umí
+
+- **Výběr zvířete** na úvodní scéně: klepnutím se model otočí o 360°, načtou se jeho anatomická data a otevře se atlas.
+- **Oblasti těla** (hlava, tlama, krk, hrudník, břicho, hřbet, pánev, obě hrudní a obě pánevní končetiny, ocas) – klepnutím na bod v modelu
+  nebo na čip v panelu kamera plynule přiletí a zaostří na oblast.
+- **Vrstvy** (kůže → svaly → šlachy a vazy → chrupavky → kosti) se odkrývají **kolečkem myši nebo lištou hloubky** (dotykem).
+  Kůže se „rozpouští“ shora dolů, pod ní se objeví svalstvo, pak šlachy, nakonec kostra. Každou vrstvu lze i ručně připnout / vypnout
+  (např. šlachy spolu s kostmi).
+- **Orgánové soustavy**: cévní (tlukot srdce, proudění krve v tepnách a žilách), dýchací (dýchací pohyby plic a bránice, proud vzduchu),
+  trávicí (posun potravy jícnem, žaludkem/předžaludky a střevem), nervová a močová.
+- **Pohyb končetiny**: v oblasti končetiny lze spustit krokový cyklus – svaly se podle svalového modelu zkracují a prodlužují,
+  aktivní svaly jsou zvýrazněny a vypsány, šlachy a vazy ukazují své skutečné napětí (opěrný aparát se napíná ve fázi opory).
+- **Izolace jedné struktury**: libovolný sval (i šlachu, vaz nebo kost) lze vyjmout z celku a samostatně otáčet a přibližovat.
+  Zůstanou s ním kosti, na kterých začíná a upíná se, jeho šlachy a kosti kloubů, přes které působí; synergisté a antagonisté
+  jsou průhledně, volitelně i jeho nerv a tepna a zbytek zvířete jako obrys. Popisky ukazují roli každé struktury.
+- **Napojení**: v detailu svalu jsou struktury seskupené podle vztahu (začátek, úpon, šlachy a vazy, nerv, tepna, synergisté,
+  antagonisté, klouby s akcí) – najetím se zvýrazní v modelu, klepnutím se na ně přejde.
+- **Ukázat funkci**: sval se animovaně stáhne a klouby, přes které jde, se pohnou do jeho akce (koncentrická kontrakce →
+  izometrické držení → excentrický návrat → klid). Svaly bez kloubu v modelu (žvýkací, mimické…) se zkracují na místě.
+  Živý panel ukazuje délku vláken, aktivaci, sílu a napětí šlachy s průběhem za posledních 6 s (i jako tabulka).
+- **Realistické vykreslení**: tkáně mají vlastní stínování (svalové snopce a přepážky, které se při napětí natahují a při aktivitě
+  tmavnou, kolagenové zvlnění šlachy, které se pod zátěží vyrovná, perleťový lesk šlach, póry kosti, lesklá chrupavka),
+  měkké vržené stíny i na samotném zvířeti a okluze okolí (zastínění štěrbin mezi svaly a kostmi).
+- **Popisky v bublinách** s vodicími čarami (latinsky / česky / anglicky, přepínatelné), dvousloupcové akademické rozložení.
+- **Detail struktury**: popis, začátek, úpon, funkce, druhové zvláštnosti, související struktury, vlastní poznámky (ukládané na server),
+  označení „umím“.
+- **Vyhledávání** ve všech názvech (la/cs/en).
+- **Procvičování**: aplikace zvýrazní strukturu v modelu a student vybírá její název ze čtyř možností; správné odpovědi se ukládají jako „naučené“.
+- **Dvojklik** vrátí kameru na vybranou oblast, **trojklik** navíc obnoví výchozí natočení pohledu.
+- Nastavení: jazyk rozhraní (CZ/EN), jazyk popisků, velikost popisků, světlý/tmavý vzhled, haptika, omezení animací, rychlost animací,
+  kvalita vykreslování (auto / vysoká / úsporná – auto zapne okluzi okolí na počítači a tabletu s grafickou kartou).
+
+Dataset obsahuje ~200 struktur na druh (970 celkem) s latinskými, českými a anglickými názvy, popisy a u svalů začátek/úpon/funkce,
+včetně druhových rozdílů (např. kůň nemá žlučník, přežvýkavci mají bachor/čepec/knihu/slez, kočka nemá šíjový vaz, vzdušný vak koně…).
+
+## Architektura
+
+```
+client/   React 19 + TypeScript + Vite + three.js (react-three-fiber, drei, camera-controls, zustand)
+server/   Node 22 + Express 5 + SQLite (vestavěný node:sqlite) – REST API, poznámky, nastavení, pokrok, kvíz
+shared/   typy, i18n, anatomický katalog, parametry druhů a „rig“ (výpočet anatomických bodů)
+tests/    vitest testy datasetu + Playwright průchod aplikací (desktop / iPad / iPhone) se screenshoty
+docs/     screenshoty z ověření
+```
+
+### Procedurální 3D modely
+
+Žádné externí modely se nestahují – každé zvíře je generováno v prohlížeči z parametrického **rigu** (kůň navíc dostává
+sochanou kostru z `tools/sculpt`, viz níže) (`shared/src/species.ts`,
+`shared/src/rig.ts`): poloha kloubů, obratlů, žeber, lebky atd. v metrech. Z něj se staví:
+
+- kůže (loft trupu, krku a hlavy, končetiny, uši, ocas, hříva, rohy, vemeno, oči, nozdry, kopyta/paznehty/tlapky) s procedurální srstí
+  (hnědák s černými odznaky, holštýnské skvrny, mourovaté pruhy…),
+- kostra (lebka, dolní čelist, zuby, obratle s trny a příčnými výběžky, žebra, hrudní kost, lopatka, pánev, dlouhé kosti, zápěstní/zánártní
+  kůstky, záprstí dle druhu – jedna holenní kost + bodcové kosti / srostlá kost paznehtníků / 5 záprstních kostí, články prstů, sezamské kosti),
+- svaly jako **svalové pláty** (`shared/src/anatomy/sheets.ts`, jedna mapa v normalizovaných souřadnicích povrchu pro všechny druhy) – Coonsovy plochy definované v souřadnicích
+  parametrického povrchu těla (`client/src/three/surface.ts`), vytlačené dovnitř s klenutou tloušťkou, rýhami na okrajích a texturou
+  vláken; kůže i pláty vycházejí ze stejného povrchu, takže na sebe přesně navazují (povrchové svaly dle écorché: m. trapezius,
+  latissimus dorsi, serratus ventralis, obliquus externus, gluteální svaly, triceps, extenzory a flexory předloktí, biceps femoris,
+  semitendinosus, gastrocnemius, žvýkací a mimické svaly…); hluboké svaly bez plátu zůstávají vřetenovité „sweep“ geometrie mezi
+  začátkem a úponem. Dále šlachy (zploštělé šlachy ohýbačů a mezikostního vazu), vazy, cévy (hladké křivky přes klouby), nervy, orgány.
+- kůň je zpracován do detailu: samostatné zápěstní (os carpi radiale, intermedium, ulnare, accessorium, C2–C4) a zánártní kosti
+  (talus, calcaneus, os tarsi centrale, T1+2, T3, T4), bodcové kosti MC/MT II a IV, tvarované konce dlouhých kostí (hlavice, chocholíky,
+  kondyly, kladky, kloubní plochy) s tenkou kloubní chrupavkou, zuby po typech (řezáky, špičáky, třenové zuby, stoličky s rezervní
+  korunkou), kompletní opěrný aparát (horní a dolní spona, přímý/šikmé/zkřížené distální sezamské vazy, prstencové vazy, postranní vazy
+  kloubů prstu, vaz impar, závěs střelkové kosti, dlouhý plantární vaz, tři čéškové vazy se zámkem kolena, přídatný vaz hlavice stehenní
+  kosti, lacertus fibrosus, cuneální šlacha), cévy hlavy, hrudníku, pánve a končetin, nervy včetně míst nervových bloků (dlaňové a
+  plantární nervy, prstní nervy, podočnicový, bradový, ušně-víčkový), zvratný hrtanový nerv, bloudivě-sympatický kmen, hluboké svaly
+  (křídlové, pásové, mnohoklaný, hýžďový přídatný, ucpávající, hlavy čtyřhlavého svalu, ocasní svaly) a velký tračník po částech
+  (pravý/levý ventrální, sternální, pánevní a bránicová klička, levý/pravý dorzální, příčný, tenký tračník).
+- vrstvy se navzájem zakrývají: neporušená kůže skryje vše pod sebou, neporušená svalová vrstva skryje osovou kostru, pletence,
+  proximální dlouhé kosti, zuby a kloubní chrupavky (příznak `covered` ve `shared/src/anatomy/skeleton.ts`).
+
+Všechny „měkké“ struktury jsou definovány přes anatomické body (`shared/src/anatomy/*.ts`), takže se při animaci pohybu končetiny
+přepočítávají v reálném čase. Nahradit procedurální model skenovaným GLB modelem lze na úrovni `client/src/three/builders.ts`
+(speciální builder `skin` apod.) – datová vrstva zůstává stejná.
+
+### Import skutečných 3D modelů (skeny, modely ze Sketchfabu)
+
+Procedurální geometrii lze pro kterýkoli druh nahradit skutečnými modely (glTF/GLB): soubory se vloží do
+`client/public/models/<druh>/` a popíší v `manifest.json` (viz `client/public/models/README.md`). Atlas model při
+otevření druhu natočí a zvětší podle procedurálního zvířete, každou síť přiřadí k nejbližší struktuře atlasu
+(nebo podle ručního mapování uzlů) a použije ji místo procedurální geometrie – popisky, oblasti, loupání vrstev,
+zvýraznění, hledání, poznámky i animace pohybu končetiny fungují dál. Kredit (autor, licence, odkaz) se zobrazuje
+v nápovědě a v panelu struktury, jak vyžadují licence Creative Commons.
+
+```bash
+# stažení modelu ze Sketchfabu (jen modely s povoleným stažením, tj. CC licence) + zápis do manifestu
+SKETCHFAB_TOKEN=… node scripts/fetch-sketchfab.mjs https://sketchfab.com/3d-models/<slug>-<uid> horse
+```
+
+Procedurální kostru lze naopak vyexportovat (`window.__vetatlas.exportGroup('bones')` v konzoli prohlížeče) jako GLB,
+např. pro 3D tisk nebo úpravu v Blenderu. Komerční modely (TurboSquid, CGTrader, 3dmodels.org…) do atlasu kopírovat nelze.
+
+### Sochaná kostra koně (Blender)
+
+Kůň má místo procedurálních kostí **sochanou kostru** (`client/public/models/horse/`): každá kost je vlastní síť
+vymodelovaná skriptem v `tools/sculpt/` – anatomické primitivy (kapsle, lofty s eliptickým průřezem, ploténky, tory)
+spojené hladkým sjednocením a vyřezané jamky, rýhy, otvory a kloubní plochy; pole vzdáleností se vzorkuje po 1–3 mm,
+převede na síť (marching cubes), vyhladí a zjednoduší v Blenderu (bpy) a uloží jako GLB s kompresí Draco.
+Kosti sedí na orientačních bodech rigu, takže na ně navazují šlachy, svaly i cévy a funguje loupání vrstev i animace.
+Obsah: lebka, dolní čelist, jazylka, řezáky/špičáky/třenové zuby/stoličky, atlas, čepovec, C3–C7, T1–T18, L1–L6, kost
+křížová, 18 ocasních obratlů, meziobratlové ploténky, 18 párů žeber s chrupavkami, hrudní kost s mečovitou chrupavkou,
+lopatka, pažní kost, vřetenní a loketní kost, 7 zápěstních kostí, záprstí se dvěma bodcovými kostmi, sezamské kosti,
+tři články prstu s člunkovou kostí, pánev, stehenní kost, čéška, holenní a lýtková kost, 6 zánártních kostí,
+nárt s bodcovými kostmi a prst. Postup přegenerování je v `tools/sculpt/README.md`.
+
+### Svaly, šlachy a jejich funkce (fyzika)
+
+- **Mechanická data** (`shared/src/anatomy/mechanics.ts`): u každého svalu katalogu začátky a úpony (kost + bod na ní, hlavy svalu),
+  průchozí body přes klouby, vlastní šlachy a spony, nerv, tepna, stavba vláken a podíl šlachy. Z nich se staví **graf napojení**
+  (`connections.ts`): kosti, šlachy, nervy, tepny, synergisté a antagonisté (sdílený kloub, stejná/opačná akce), klouby.
+  Druhové rozdíly: např. mezikostní sval koně a přežvýkavců je šlachovitý závěsný vaz, povrchový ohýbač prstů pánevní
+  končetiny je u nich šlachovitý pruh, u šelem sval.
+- **Délka svalu** se počítá z polohy kostí: dráha začátek → průchozí body → úpon se v každém snímku přepočítá s natočením kloubů;
+  rameno síly (moment arm) = −dL/dθ. Unit testy hlídají, že každý sval s uvedenou akcí (flexe/extenze) má rameno se správným znaménkem.
+- **Hillův model svalu** (`client/src/three/biomech.ts`): aktivační dynamika, křivka síla–délka, pasivní elastická složka,
+  síla–rychlost (koncentrická i excentrická větev), šlacha v sérii. Stav se zobrazuje jako koncentrická / excentrická /
+  izometrická kontrakce, protažený nebo uvolněný sval. Bříško zachovává objem: zkrácený sval ztloustne, protažený se ztenčí.
+- **Napětí šlach a vazů**: šlacha v sérii se svalem nese sílu svalu (změnu délky dráhy převezmou svalová vlákna), vaz
+  od kosti ke kosti se napíná změnou své délky; ohýbačové šlachy pod sponou (opěrný aparát) se chovají jako vaz.
+  Body drah (šlachy, vazy, cévy, nervy) se otáčejí se svou kostí, takže šlacha zůstane za holenní kostí i při plné flexi.
+- **Reciproční aparát**: třetí lýtkový sval a povrchový ohýbač prstů spojují koleno s hlezenem; hlezno se v kroku i v ukázce
+  funkce pohybuje vždy s kolenem v poměru, při kterém oba pruhy zůstávají stejně dlouhé (test `tests/biomech.test.ts`).
+- Test `tests/ligaments.test.ts` projde každý vaz všech pěti druhů celým rozsahem pohybu každého kloubu a hlídá,
+  že se nenatáhne víc, než kolagen snese (10 %).
+
+## Spuštění
+
+Požadavky: Node.js ≥ 22.18 (bez dalších nativních závislostí – SQLite je součástí Node).
+
+```bash
+npm install
+npm run dev          # API na :8787 + Vite dev server na :5173 (proxy /api)
+```
+
+Produkce:
+
+```bash
+npm run build        # sestaví klienta do client/dist
+npm start            # server na http://localhost:8787 (servíruje i klienta)
+```
+
+Docker:
+
+```bash
+docker build -t vetatlas .
+docker run -p 8787:8787 -v vetatlas-data:/data vetatlas
+```
+
+Proměnné prostředí: `PORT` (8787), `VETATLAS_DB` (cesta k SQLite souboru), `CLIENT_DIST`.
+
+## API
+
+| Metoda | Cesta | Popis |
+| --- | --- | --- |
+| GET | `/api/health` | stav serveru |
+| GET | `/api/species` | seznam druhů (metadata) |
+| GET | `/api/species/:id` | kompletní data druhu (rig, oblasti, struktury) |
+| GET | `/api/species/:id/structures/:sid` | jedna struktura |
+| GET | `/api/search?species=horse&q=hum` | fulltext v názvech |
+| GET/POST/PUT/DELETE | `/api/notes` | poznámky uživatele (`deviceId`) |
+| GET/PUT | `/api/settings/:deviceId` | nastavení |
+| GET/POST | `/api/progress/:deviceId`, `/api/progress` | naučené struktury |
+| GET | `/api/quiz?species=horse&n=10&group=muscles` | otázky k procvičování |
+
+## Ovládání
+
+| | Myš | Dotyk |
+| --- | --- | --- |
+| otáčení | tažení levým tlačítkem | jeden prst |
+| posun | tažení pravým tlačítkem | dva prsty |
+| přiblížení | Ctrl + kolečko / tlačítka | roztažení prstů |
+| odkrývání vrstev | kolečko myši | lišta hloubky vpravo |
+| návrat na oblast | dvojklik | dvojité klepnutí |
+| návrat + výchozí natočení | trojklik | trojité klepnutí |
+
+Klávesy: `Esc` zpět (ukončí ukázku funkce, pak izolaci, pak výběr…), `1–5` vrstvy, `Q W E R T` soustavy, `↑/↓` hloubka,
+mezerník animace, `L` popisky, `H` výchozí pohled.
+
+## Testy a ověření
+
+```bash
+npm test             # vitest – integrita datasetu, mechanika svalů (ramena sil), Hillův model, vazy v rozsahu pohybu, krok
+npm run typecheck
+npm run verify:all   # build + Playwright průchod (desktop, iPad, iPhone): animace, přechody, vrstvy, popisky, poznámky,
+                     # izolace svalu, ukázka funkce, napětí šlach v kroku, screenshoty do docs/screenshots
+```

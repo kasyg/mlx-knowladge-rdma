@@ -1,0 +1,31 @@
+{
+  "name": "vetatlas",
+  "version": "1.0.0",
+  "private": true,
+  "description": "VetAtlas 3D – interaktivní anatomický atlas zvířat pro studenty veterinární medicíny (kůň, pes, kočka, skot, koza).",
+  "type": "module",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "npm run dev --workspace server",
+    "dev:client": "npm run dev --workspace client",
+    "build": "npm run build --workspace client",
+    "start": "npm run start --workspace server",
+    "typecheck": "npm run typecheck --workspace client && npm run typecheck --workspace server",
+    "test": "vitest run --config tests/vitest.config.ts",
+    "verify": "node tests/verify.e2e.mjs",
+    "verify:all": "npm run build && npm run verify"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6",
+    "playwright": "1.56.1",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.3"
+  },
+  "engines": {
+    "node": ">=22.18"
+  }
+}
