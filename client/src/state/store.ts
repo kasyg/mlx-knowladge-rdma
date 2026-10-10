@@ -4,6 +4,8 @@ import { DEFAULT_SETTINGS, LAYER_IDS, SYSTEM_IDS } from '@shared/types';
 import { UI, type UiKey } from '@shared/i18n';
 import type { AnimalModel } from '../three/animal.ts';
 import { buildAnimal } from '../three/animal.ts';
+import { loadManifest, applyExternalModels, type ExternalEntry } from '../three/external.ts';
+import { fitRigToSkeleton } from '../three/rigfit.ts';
 import { fetchSpecies, fetchSettings, saveSettings, listNotes, fetchProgress, setProgress as apiSetProgress } from '../api/client.ts';
 import { deviceId } from '../utils/device.ts';
 import { setHapticsEnabled } from '../utils/haptics.ts';
@@ -57,6 +59,8 @@ export interface AtlasState {
   deviceId: string;
   modelVersion: number;
   quizHighlight: string | null;
+  /** manifest entries of the imported 3D models of the current species (for credits) */
+  external: ExternalEntry[];
 
   t: (k: UiKey) => string;
   label: (names: { la: string; cs: string; en: string }) => string;
@@ -149,6 +153,7 @@ export const useAtlas = create<AtlasState>((set, get) => ({
   known: new Set(),
   deviceId: deviceId(),
   modelVersion: 0,
+  external: [],
   quizHighlight: null,
 
   t: (k) => UI[get().settings.uiLang][k] ?? k,
@@ -196,11 +201,30 @@ export const useAtlas = create<AtlasState>((set, get) => ({
     if (!models.full.has(id)) {
       set({ loading: { active: true, label: get().t('loading'), progress: 0 } });
       const t0 = performance.now();
-      const model = await buildAnimal(payload, {
-        chunk: 24,
-        onProgress: (done, total) => set({ loading: { active: true, label: get().t('loading'), progress: done / total } }),
-      });
+      const build = (p: SpeciesPayload) =>
+        buildAnimal(p, {
+          chunk: 24,
+          onProgress: (done, total) => set({ loading: { active: true, label: get().t('loading'), progress: done / total } }),
+        });
+      let model = await build(payload);
       console.info(`[vetatlas] built ${id}: ${model.instances.length} structures in ${Math.round(performance.now() - t0)} ms`);
+      // scanned / modelled meshes dropped into client/public/models/<species>/ take the place of the procedural ones
+      const manifest = await loadManifest(id);
+      if (manifest && manifest.models.length) {
+        set({ loading: { active: true, label: get().t('loadingModels'), progress: 1 } });
+        await applyExternalModels(model, id, manifest);
+        // an imported skeleton moves the rig's joints: rebuild the soft tissue around the real bones
+        const wantsFit = manifest.models.some((e) => (e.group ?? 'bones') === 'bones' && e.fitRig !== false);
+        const fit = wantsFit ? fitRigToSkeleton(model) : null;
+        if (fit) {
+          console.info(`[vetatlas] rig fitted to the imported skeleton: ${fit.report.changed.join(', ')}${fit.report.rejected.length ? ` (rejected: ${fit.report.rejected.join(', ')})` : ''}`);
+          payload = { ...payload, rig: fit.rig };
+          set((s) => ({ payloads: { ...s.payloads, [id]: payload! } }));
+          model.dispose();
+          model = await build(payload);
+          await applyExternalModels(model, id, manifest);
+        }
+      }
       models.full.set(id, model);
     }
     // keep the spin visible for at least its duration
@@ -224,6 +248,7 @@ export const useAtlas = create<AtlasState>((set, get) => ({
       loading: { active: false, label: '', progress: 1 },
       panel: 'none',
       modelVersion: get().modelVersion + 1,
+      external: (models.full.get(id)?.external ?? []).map((r) => r.entry),
       notes: [],
       known: new Set(),
     });

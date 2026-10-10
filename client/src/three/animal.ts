@@ -9,6 +9,7 @@ import { makeMaterial, uniformsOf, KIND_COLORS, ID_COLORS, type VetUniforms } fr
 import { furTexture } from './fur.ts';
 import { SweepGeometry, type V3 } from './sweep.ts';
 import { segmentOfLandmark, limbOfLandmark, FORELIMB_CHAIN, HINDLIMB_CHAIN, type LimbKey, type SegmentId, type JointName } from './segments.ts';
+import type { ExternalResult } from './external.ts';
 
 export type { DynamicPart };
 
@@ -28,6 +29,8 @@ export interface StructureInstance {
   limbs: Set<LimbKey>;
   pathLength: number;
   isSoftOf: (limb: LimbKey) => boolean;
+  /** id of the external model entry whose meshes replaced the procedural geometry */
+  external?: string;
 }
 
 export interface LimbPivots {
@@ -49,6 +52,8 @@ export interface AnimalModel {
   /** current (possibly animated) landmark position */
   landmarkNow: (name: string) => V3;
   surface: BodySurface;
+  /** imported (scanned / modelled) meshes merged into the model, see external.ts */
+  external?: ExternalResult[];
   dispose: () => void;
 }
 

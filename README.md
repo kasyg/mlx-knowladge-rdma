@@ -58,6 +58,23 @@ Všechny „měkké“ struktury jsou definovány přes anatomické body (`share
 přepočítávají v reálném čase. Nahradit procedurální model skenovaným GLB modelem lze na úrovni `client/src/three/builders.ts`
 (speciální builder `skin` apod.) – datová vrstva zůstává stejná.
 
+### Import skutečných 3D modelů (skeny, modely ze Sketchfabu)
+
+Procedurální geometrii lze pro kterýkoli druh nahradit skutečnými modely (glTF/GLB): soubory se vloží do
+`client/public/models/<druh>/` a popíší v `manifest.json` (viz `client/public/models/README.md`). Atlas model při
+otevření druhu natočí a zvětší podle procedurálního zvířete, každou síť přiřadí k nejbližší struktuře atlasu
+(nebo podle ručního mapování uzlů) a použije ji místo procedurální geometrie – popisky, oblasti, loupání vrstev,
+zvýraznění, hledání, poznámky i animace pohybu končetiny fungují dál. Kredit (autor, licence, odkaz) se zobrazuje
+v nápovědě a v panelu struktury, jak vyžadují licence Creative Commons.
+
+```bash
+# stažení modelu ze Sketchfabu (jen modely s povoleným stažením, tj. CC licence) + zápis do manifestu
+SKETCHFAB_TOKEN=… node scripts/fetch-sketchfab.mjs https://sketchfab.com/3d-models/<slug>-<uid> horse
+```
+
+Procedurální kostru lze naopak vyexportovat (`window.__vetatlas.exportGroup('bones')` v konzoli prohlížeče) jako GLB,
+např. pro 3D tisk nebo úpravu v Blenderu. Komerční modely (TurboSquid, CGTrader, 3dmodels.org…) do atlasu kopírovat nelze.
+
 ## Spuštění
 
 Požadavky: Node.js ≥ 22.18 (bez dalších nativních závislostí – SQLite je součástí Node).

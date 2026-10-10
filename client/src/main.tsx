@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './components/App.tsx';
-import { useAtlas } from './state/store.ts';
+import { useAtlas, models } from './state/store.ts';
 import { SPECIES_IDS, type RegionId, type SpeciesId } from '@shared/types';
 import './styles/global.css';
 
@@ -29,10 +29,20 @@ window.addEventListener('popstate', () => {
 // expose a tiny debug/test hook
 declare global {
   interface Window {
-    __vetatlas?: { store: typeof useAtlas };
+    __vetatlas?: { store: typeof useAtlas; exportGroup: (group: string) => Promise<string> };
   }
 }
-window.__vetatlas = { store: useAtlas };
+window.__vetatlas = {
+  store: useAtlas,
+  /** export one layer of the current model as a GLB (base64) – for tests, 3D printing or editing in Blender */
+  exportGroup: async (group) => {
+    const id = useAtlas.getState().speciesId;
+    const model = id ? models.full.get(id) : null;
+    if (!model) throw new Error('no model loaded');
+    const { exportGroupGLB, toBase64 } = await import('./three/exporter.ts');
+    return toBase64(await exportGroupGLB(model, group));
+  },
+};
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

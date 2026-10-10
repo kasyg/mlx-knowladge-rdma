@@ -13,6 +13,7 @@ export function DetailPanel() {
   const label = useAtlas((s) => s.label);
   const lang = useAtlas((s) => s.settings.uiLang);
   const payload = useAtlas((s) => s.payload);
+  const external = useAtlas((s) => s.external);
   const camera = useAtlas((s) => s.camera);
   const notes = useAtlas((s) => s.notes);
   const reloadNotes = useAtlas((s) => s.reloadNotes);
@@ -46,6 +47,7 @@ export function DetailPanel() {
   const related = m!.instances.filter((i) => i.key !== inst.key && i.group === inst.group && i.regions.some((r) => inst.regions.includes(r)) && (!inst.side || i.side === inst.side || !i.side)).slice(0, 8);
   const myNotes = notes.filter((n) => n.structureId === def.id);
   const speciesNote = def.speciesNotes?.[payload.meta.id as SpeciesId];
+  const credit = inst.external ? external.find((e) => e.id === inst.external)?.attribution : undefined;
   const isKnown = known.has(def.id);
 
   const saveDraft = async () => {
@@ -109,6 +111,13 @@ export function DetailPanel() {
         {speciesNote && (
           <div className="species-note">
             <strong>{t('speciesNote')} ({payload.meta.names[lang]}):</strong> {speciesNote[lang]}
+          </div>
+        )}
+        {credit && (
+          <div className="species-note">
+            <strong>{t('importedModel')}:</strong> {credit.title}
+            {credit.author ? `, ${credit.author}` : ''}
+            {credit.license ? ` (${credit.license})` : ''}
           </div>
         )}
         <div className="row gap">

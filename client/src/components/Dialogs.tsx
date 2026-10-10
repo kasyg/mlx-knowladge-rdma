@@ -67,6 +67,7 @@ export function HelpDialog() {
   const panel = useAtlas((s) => s.panel);
   const setPanel = useAtlas((s) => s.setPanel);
   const t = useAtlas((s) => s.t);
+  const external = useAtlas((s) => s.external);
   return (
     <Modal open={panel === 'help'} onClose={() => setPanel('none')} title={t('help')} wide>
       <table className="help-table">
@@ -89,6 +90,26 @@ export function HelpDialog() {
         <li>{t('keyArrows')}</li>
         <li>{t('keySpace')}</li>
       </ul>
+      {external.length > 0 && (
+        <>
+          <h4>{t('modelCredits')}</h4>
+          <ul className="help-list">
+            {external.map((e) => (
+              <li key={e.id}>
+                {e.attribution?.title ?? e.file}
+                {e.attribution?.author ? `, ${e.attribution.author}` : ''}
+                {e.attribution?.license ? ` (${e.attribution.license})` : ''}
+                {e.attribution?.url ? (
+                  <>
+                    {' · '}
+                    <a href={e.attribution.url} target="_blank" rel="noreferrer">{t('source')}</a>
+                  </>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </Modal>
   );
 }
