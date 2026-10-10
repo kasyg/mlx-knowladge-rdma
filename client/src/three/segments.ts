@@ -20,7 +20,9 @@ const FL: Record<string, JointName | null> = {
 };
 const HL: Record<string, JointName | null> = {
   tuber_coxae: null, tuber_ischii: null, hip: null, ischiatic_notch: null, groin: null, limb_center: null,
-  trochanter: 'hip', femur_mid: 'hip', femur_prox: 'hip', femur_dist: 'hip', third_trochanter: 'hip', thigh_medial: 'hip', stifle: 'hip', patella: 'hip',
+  trochanter: 'hip', femur_mid: 'hip', femur_prox: 'hip', femur_dist: 'hip', third_trochanter: 'hip', thigh_medial: 'hip', stifle: 'hip',
+  // the patellar ligaments do not stretch: the patella glides down the trochlea with the tibia
+  patella: 'stifle',
   tibial_tuberosity: 'stifle', tibia_mid: 'stifle', tibia_prox: 'stifle', tibia_dist: 'stifle', hock: 'stifle',
   hock_cranial: 'hock', calcaneus: 'hock', cannon_mid: 'hock', cannon_prox: 'hock', cannon_dist: 'hock', fetlock: 'hock',
   sesamoid: 'fetlock', pastern: 'fetlock',

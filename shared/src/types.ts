@@ -172,6 +172,8 @@ export interface SheetRecipe {
   dip?: number;
   /** 1 = directly under the skin, 2/3 = deeper (avoids z-fighting with overlying sheets) */
   layer?: number;
+  /** volumetric belly: fraction of the way from the skin to the bone (limbs) / body axis that the muscle fills */
+  depth?: number;
 }
 
 export type GeometryRecipe = SweepRecipe | EllipsoidRecipe | LoftRecipe | SpecialRecipe | SheetRecipe;
@@ -404,7 +406,11 @@ export interface UserSettings {
   theme: 'light' | 'dark';
   animationSpeed: number;
   showAllLabels: boolean;
+  /** rendering quality: auto picks high on desktops and tablets with a hardware GPU */
+  quality: RenderQuality;
 }
+
+export type RenderQuality = 'auto' | 'high' | 'low';
 
 export const DEFAULT_SETTINGS: UserSettings = {
   uiLang: 'cs',
@@ -415,4 +421,5 @@ export const DEFAULT_SETTINGS: UserSettings = {
   theme: 'light',
   animationSpeed: 1,
   showAllLabels: false,
+  quality: 'auto',
 };

@@ -330,7 +330,7 @@ export const tendons: StructureDef[] = [
     names: { la: 'Ligamentum accessorium tendinis m. flexoris digitorum profundi (pánevní končetina)', cs: 'Hlezenní spona hluboké ohýbačové šlachy', en: 'Tarsal (subtarsal) check ligament of the DDFT' },
     description: { cs: 'Tenký pruh od plantárního vazu hlezna k hluboké ohýbačové šlaše pod hleznem – obdoba dolní spony přední končetiny, u koně výrazně slabší, u skotu silnější. Na pánevní končetině horní spona chybí.', en: 'A thin band from the plantar tarsal ligament to the deep flexor tendon below the hock – the counterpart of the inferior check ligament of the forelimb, much weaker in the horse and stronger in cattle. The hindlimb has no superior check ligament.' },
     function: { cs: 'Doplňuje opěrný aparát pánevní končetiny', en: 'Supplements the stay apparatus of the hindlimb' },
-    geometry: { type: 'sweep', path: [{ at: 'hl_{S}_hock', dx: 0.04, dy: -0.04 }, { at: 'hl_{S}_cannon_prox', dx: 0.03, dy: -0.02 }, { at: 'hl_{S}_cannon_mid', dx: 0.022, dy: 0.03 }], r: 0.004, profile: 'tube' },
+    geometry: { type: 'sweep', path: [{ at: 'hl_{S}_cannon_prox', dx: 0.043, dy: -0.017 }, { at: 'hl_{S}_cannon_prox', dx: 0.03, dy: -0.02 }, { at: 'hl_{S}_cannon_mid', dx: 0.022, dy: 0.03 }], r: 0.004, profile: 'tube' },
   },
   {
     id: 'lig_anulare_palmare',

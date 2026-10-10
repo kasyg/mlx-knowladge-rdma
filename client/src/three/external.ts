@@ -13,9 +13,38 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import type { GroupId, RegionId, SpeciesId, StructureDef } from '@shared/types';
-import { makeMaterial, uniformsOf, KIND_COLORS } from './materials.ts';
+import { makeMaterial, uniformsOf, enableShadows, KIND_COLORS, tissueOf } from './materials.ts';
 import type { AnimalModel, StructureInstance } from './animal.ts';
 import { plainCopy } from './exporter.ts';
+import { pointRefNames } from '@shared/rig';
+import { segmentOfLandmark, FORELIMB_CHAIN, HINDLIMB_CHAIN, type SegmentId } from './segments.ts';
+
+/**
+ * The limb segment a rigid bone rides on, from the landmarks of its procedural
+ * (deformable) path. Joint landmarks belong to the segment above the joint, so
+ * the deepest segment the path touches is the bone's own: P1 drawn from the
+ * fetlock to the pastern joint rides on the segment that pivots at the fetlock.
+ */
+function rigidSegment(inst: StructureInstance): SegmentId | null {
+  let best: SegmentId | null = null;
+  let depth = -1;
+  for (const d of inst.dynamics) {
+    if (d.kind !== 'sweep') continue;
+    for (const ref of d.path) {
+      for (const n of pointRefNames(ref)) {
+        const seg = segmentOfLandmark(n.replace('{S}', inst.side ?? 'L'));
+        if (!seg) continue;
+        const m = /^(fl|hl)_[LR]_(\w+)$/.exec(seg)!;
+        const k = (m[1] === 'fl' ? FORELIMB_CHAIN : HINDLIMB_CHAIN).indexOf(m[2] as never);
+        if (k > depth) {
+          depth = k;
+          best = seg;
+        }
+      }
+    }
+  }
+  return best;
+}
 
 export type Axis = '+x' | '-x' | '+y' | '-y' | '+z' | '-z';
 
@@ -81,8 +110,8 @@ let draco: DRACOLoader | null = null;
 function dracoLoader(): DRACOLoader {
   if (!draco) {
     draco = new DRACOLoader();
+    // WebAssembly decoding is the default whenever the browser supports it
     draco.setDecoderPath('/draco/');
-    draco.setDecoderConfig({ type: 'wasm' });
   }
   return draco;
 }
@@ -288,6 +317,7 @@ export async function applyExternalEntry(model: AnimalModel, species: SpeciesId,
       highlight: def.kind === 'muscle' ? '#ff5a3c' : def.kind === 'tendon' || def.kind === 'ligament' ? '#ffb347' : '#ffd24d',
       H,
       side: THREE.DoubleSide,
+      tissue: tissueOf(def.kind),
     });
     if (keepTextures && base && 'normalMap' in base && base.normalMap) {
       mat.normalMap = base.normalMap;
@@ -304,8 +334,19 @@ export async function applyExternalEntry(model: AnimalModel, species: SpeciesId,
   let mapped = 0;
   for (const [inst, arr] of assignments) {
     // the imported meshes join the structure: same parent (segment pivot or node), same offsets
-    const parent = inst.meshes[0]?.parent ?? inst.node;
-    const offset = inst.meshes[0]?.position.clone() ?? new THREE.Vector3();
+    let parent: THREE.Object3D = inst.meshes[0]?.parent ?? inst.node;
+    let offset = inst.meshes[0]?.position.clone() ?? new THREE.Vector3();
+    const rigid = inst.def.kind === 'bone' || inst.def.kind === 'cartilage';
+    if (replace && rigid && inst.dynamics.length) {
+      // a bone the procedural model bent along its path is rigid once sculpted: it rides on its limb segment
+      const seg = rigidSegment(inst);
+      if (seg) {
+        parent = model.segmentNode(seg);
+        const base = model.segmentRest(seg);
+        offset = new THREE.Vector3(-base.x, -base.y, -base.z);
+      }
+      inst.dynamics.length = 0;
+    }
     if (replace) {
       for (const mesh of inst.meshes) {
         mesh.parent?.remove(mesh);
@@ -322,7 +363,7 @@ export async function applyExternalEntry(model: AnimalModel, species: SpeciesId,
     inst.uniforms.push(u);
     for (const it of arr) {
       const mesh = new THREE.Mesh(it.geometry, mat);
-      mesh.castShadow = true;
+      enableShadows(mesh);
       mesh.userData.key = inst.key;
       mesh.userData.external = entry.id;
       mesh.position.copy(offset);
@@ -359,7 +400,7 @@ export async function applyExternalEntry(model: AnimalModel, species: SpeciesId,
     const box = new THREE.Box3();
     for (const it of loose) {
       const mesh = new THREE.Mesh(it.geometry, mat);
-      mesh.castShadow = true;
+      enableShadows(mesh);
       mesh.userData.key = node.name;
       mesh.userData.external = entry.id;
       node.add(mesh);
@@ -383,6 +424,7 @@ export async function applyExternalEntry(model: AnimalModel, species: SpeciesId,
       dynamics: [],
       limbs: new Set(),
       pathLength: 0,
+      shapes: [],
       isSoftOf: () => false,
       external: entry.id,
     };

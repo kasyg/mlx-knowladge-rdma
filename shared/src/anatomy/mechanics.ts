@@ -39,6 +39,17 @@ export interface MuscleMech {
   pcsa?: number;
   /** part of the passive stay apparatus (carries load with almost no muscle activity) */
   stay?: boolean;
+  /** horse, cattle and goat differ from the carnivores (e.g. a tendinous interosseus) */
+  hoofed?: Partial<Pick<MuscleMech, 'tendonFraction' | 'fibres' | 'pcsa'>>;
+}
+
+export const HOOFED_SPECIES = ['horse', 'cow', 'goat'];
+
+/** the mechanics of a muscle in a species */
+export function mechanicsFor(id: string, species: string): MuscleMech | undefined {
+  const m = MECHANICS[id];
+  if (!m || !m.hoofed || !HOOFED_SPECIES.includes(species)) return m;
+  return { ...m, ...m.hoofed };
 }
 
 const lm = (at: string, dx = 0, dy = 0, lat = 0): PointRef => ({ at, dx, dy, lat });
@@ -191,7 +202,7 @@ export const MECHANICS: Record<string, MuscleMech> = {
     via: [fl('radius_dist', 0.026, 0.0, -0.002), fl('accessory_carpal', -0.008, -0.012, -0.002), fl('cannon_dist', 0.02), fl('sesamoid', 0.006, -0.004), fl('p2_palmar', -0.006, 0.0)],
     tendons: ['tendo_fdp_fl', 'lig_accessorium', 'lig_anulare_palmare', 'ligg_anularia_digiti'], nerve: ['n_medianus_ulnaris', 'n_ulnaris'], artery: ['a_mediana'], fibres: 'multipennate', tendonFraction: 0.72, pcsa: 6, stay: true,
   },
-  mm_interossei: { origin: [site(MC3, fl('cannon_prox', 0.014))], insertion: [site(['ossa_sesamoidea_proximalia_fl'], fl('sesamoid', 0.004, 0.006))], nerve: ['nn_palmares'], artery: ['aa_digitales_palmares'], fibres: 'tendinous', tendonFraction: 0.6, pcsa: 2, stay: true },
+  mm_interossei: { origin: [site(MC3, fl('cannon_prox', 0.014))], insertion: [site(['ossa_sesamoidea_proximalia_fl'], fl('sesamoid', 0.004, 0.006))], nerve: ['nn_palmares'], artery: ['aa_digitales_palmares'], fibres: 'tendinous', tendonFraction: 0.6, pcsa: 2, stay: true, hoofed: { tendonFraction: 0.99 } },
 
   // ================================================================== hindlimb
   m_gluteus_superficialis: { origin: [site('os_coxae', hl('tuber_coxae', 0.01, -0.02))], insertion: [site('femur', hl('third_trochanter'))], nerve: ['nn_glutei'], artery: ['a_glutea_cranialis'], fibres: 'parallel', tendonFraction: 0.15, pcsa: 3 },
@@ -238,7 +249,9 @@ export const MECHANICS: Record<string, MuscleMech> = {
     origin: [site('femur', hl('supracondylar', 0.0, -0.01))],
     insertion: [site('calcaneus', hl('calcaneus', 0.008, 0.022), H('úpon na patním hrbolu', 'calcanean attachment')), site(P2H, hl('p2_palmar'))],
     via: [hl('tibia_caudal', 0.024, -0.02), hl('calcaneus', 0.01, 0.024), hl('cannon_dist', 0.026), hl('sesamoid', 0.012, 0.0)],
-    tendons: ['tendo_fds_hl', 'tendo_calcaneus_communis', 'lig_anulare_palmare', 'ligg_anularia_digiti'], nerve: ['n_tibialis'], artery: ['a_poplitea_tibialis'], fibres: 'tendinous', tendonFraction: 0.95, pcsa: 2, stay: true,
+    tendons: ['tendo_fds_hl', 'tendo_calcaneus_communis', 'lig_anulare_palmare', 'ligg_anularia_digiti'], nerve: ['n_tibialis'], artery: ['a_poplitea_tibialis'], fibres: 'pennate', tendonFraction: 0.6, pcsa: 2, stay: true,
+    // in the horse and the ruminants it is a tendinous band (part of the reciprocal apparatus), in carnivores a real muscle
+    hoofed: { fibres: 'tendinous', tendonFraction: 0.99 },
   },
   m_flexor_digitorum_profundus_hl: {
     origin: [site('tibia', hl('tibia_caudal'), H('caput laterale', 'lateral head')), site('fibula', hl('fibula_head', 0.006, -0.01), H('caput tibiale caudale', 'caudal tibial head'))],

@@ -13,15 +13,27 @@ Web aplikace funguje na mobilu, tabletu i počítači (responzivní UI, dotykov�
   (např. šlachy spolu s kostmi).
 - **Orgánové soustavy**: cévní (tlukot srdce, proudění krve v tepnách a žilách), dýchací (dýchací pohyby plic a bránice, proud vzduchu),
   trávicí (posun potravy jícnem, žaludkem/předžaludky a střevem), nervová a močová.
-- **Pohyb končetiny**: v oblasti končetiny lze spustit krokový cyklus – svaly se zkracují/prodlužují, šlachy se napínají ve fázi opory,
-  aktivní svaly jsou zvýrazněny a vypsány.
+- **Pohyb končetiny**: v oblasti končetiny lze spustit krokový cyklus – svaly se podle svalového modelu zkracují a prodlužují,
+  aktivní svaly jsou zvýrazněny a vypsány, šlachy a vazy ukazují své skutečné napětí (opěrný aparát se napíná ve fázi opory).
+- **Izolace jedné struktury**: libovolný sval (i šlachu, vaz nebo kost) lze vyjmout z celku a samostatně otáčet a přibližovat.
+  Zůstanou s ním kosti, na kterých začíná a upíná se, jeho šlachy a kosti kloubů, přes které působí; synergisté a antagonisté
+  jsou průhledně, volitelně i jeho nerv a tepna a zbytek zvířete jako obrys. Popisky ukazují roli každé struktury.
+- **Napojení**: v detailu svalu jsou struktury seskupené podle vztahu (začátek, úpon, šlachy a vazy, nerv, tepna, synergisté,
+  antagonisté, klouby s akcí) – najetím se zvýrazní v modelu, klepnutím se na ně přejde.
+- **Ukázat funkci**: sval se animovaně stáhne a klouby, přes které jde, se pohnou do jeho akce (koncentrická kontrakce →
+  izometrické držení → excentrický návrat → klid). Svaly bez kloubu v modelu (žvýkací, mimické…) se zkracují na místě.
+  Živý panel ukazuje délku vláken, aktivaci, sílu a napětí šlachy s průběhem za posledních 6 s (i jako tabulka).
+- **Realistické vykreslení**: tkáně mají vlastní stínování (svalové snopce a přepážky, které se při napětí natahují a při aktivitě
+  tmavnou, kolagenové zvlnění šlachy, které se pod zátěží vyrovná, perleťový lesk šlach, póry kosti, lesklá chrupavka),
+  měkké vržené stíny i na samotném zvířeti a okluze okolí (zastínění štěrbin mezi svaly a kostmi).
 - **Popisky v bublinách** s vodicími čarami (latinsky / česky / anglicky, přepínatelné), dvousloupcové akademické rozložení.
 - **Detail struktury**: popis, začátek, úpon, funkce, druhové zvláštnosti, související struktury, vlastní poznámky (ukládané na server),
   označení „umím“.
 - **Vyhledávání** ve všech názvech (la/cs/en).
 - **Procvičování**: aplikace zvýrazní strukturu v modelu a student vybírá její název ze čtyř možností; správné odpovědi se ukládají jako „naučené“.
 - **Dvojklik** vrátí kameru na vybranou oblast, **trojklik** navíc obnoví výchozí natočení pohledu.
-- Nastavení: jazyk rozhraní (CZ/EN), jazyk popisků, velikost popisků, světlý/tmavý vzhled, haptika, omezení animací, rychlost animací.
+- Nastavení: jazyk rozhraní (CZ/EN), jazyk popisků, velikost popisků, světlý/tmavý vzhled, haptika, omezení animací, rychlost animací,
+  kvalita vykreslování (auto / vysoká / úsporná – auto zapne okluzi okolí na počítači a tabletu s grafickou kartou).
 
 Dataset obsahuje ~200 struktur na druh (970 celkem) s latinskými, českými a anglickými názvy, popisy a u svalů začátek/úpon/funkce,
 včetně druhových rozdílů (např. kůň nemá žlučník, přežvýkavci mají bachor/čepec/knihu/slez, kočka nemá šíjový vaz, vzdušný vak koně…).
@@ -98,6 +110,26 @@ lopatka, pažní kost, vřetenní a loketní kost, 7 zápěstních kostí, zápr
 tři články prstu s člunkovou kostí, pánev, stehenní kost, čéška, holenní a lýtková kost, 6 zánártních kostí,
 nárt s bodcovými kostmi a prst. Postup přegenerování je v `tools/sculpt/README.md`.
 
+### Svaly, šlachy a jejich funkce (fyzika)
+
+- **Mechanická data** (`shared/src/anatomy/mechanics.ts`): u každého svalu katalogu začátky a úpony (kost + bod na ní, hlavy svalu),
+  průchozí body přes klouby, vlastní šlachy a spony, nerv, tepna, stavba vláken a podíl šlachy. Z nich se staví **graf napojení**
+  (`connections.ts`): kosti, šlachy, nervy, tepny, synergisté a antagonisté (sdílený kloub, stejná/opačná akce), klouby.
+  Druhové rozdíly: např. mezikostní sval koně a přežvýkavců je šlachovitý závěsný vaz, povrchový ohýbač prstů pánevní
+  končetiny je u nich šlachovitý pruh, u šelem sval.
+- **Délka svalu** se počítá z polohy kostí: dráha začátek → průchozí body → úpon se v každém snímku přepočítá s natočením kloubů;
+  rameno síly (moment arm) = −dL/dθ. Unit testy hlídají, že každý sval s uvedenou akcí (flexe/extenze) má rameno se správným znaménkem.
+- **Hillův model svalu** (`client/src/three/biomech.ts`): aktivační dynamika, křivka síla–délka, pasivní elastická složka,
+  síla–rychlost (koncentrická i excentrická větev), šlacha v sérii. Stav se zobrazuje jako koncentrická / excentrická /
+  izometrická kontrakce, protažený nebo uvolněný sval. Bříško zachovává objem: zkrácený sval ztloustne, protažený se ztenčí.
+- **Napětí šlach a vazů**: šlacha v sérii se svalem nese sílu svalu (změnu délky dráhy převezmou svalová vlákna), vaz
+  od kosti ke kosti se napíná změnou své délky; ohýbačové šlachy pod sponou (opěrný aparát) se chovají jako vaz.
+  Body drah (šlachy, vazy, cévy, nervy) se otáčejí se svou kostí, takže šlacha zůstane za holenní kostí i při plné flexi.
+- **Reciproční aparát**: třetí lýtkový sval a povrchový ohýbač prstů spojují koleno s hlezenem; hlezno se v kroku i v ukázce
+  funkce pohybuje vždy s kolenem v poměru, při kterém oba pruhy zůstávají stejně dlouhé (test `tests/biomech.test.ts`).
+- Test `tests/ligaments.test.ts` projde každý vaz všech pěti druhů celým rozsahem pohybu každého kloubu a hlídá,
+  že se nenatáhne víc, než kolagen snese (10 %).
+
 ## Spuštění
 
 Požadavky: Node.js ≥ 22.18 (bez dalších nativních závislostí – SQLite je součástí Node).
@@ -148,12 +180,14 @@ Proměnné prostředí: `PORT` (8787), `VETATLAS_DB` (cesta k SQLite souboru), `
 | návrat na oblast | dvojklik | dvojité klepnutí |
 | návrat + výchozí natočení | trojklik | trojité klepnutí |
 
-Klávesy: `Esc` zpět, `1–5` vrstvy, `Q W E R T` soustavy, `↑/↓` hloubka, mezerník animace, `L` popisky, `H` výchozí pohled.
+Klávesy: `Esc` zpět (ukončí ukázku funkce, pak izolaci, pak výběr…), `1–5` vrstvy, `Q W E R T` soustavy, `↑/↓` hloubka,
+mezerník animace, `L` popisky, `H` výchozí pohled.
 
 ## Testy a ověření
 
 ```bash
-npm test             # vitest – integrita datasetu (každý recept odkazuje na existující anatomický bod, úplné názvy/popisy…)
+npm test             # vitest – integrita datasetu, mechanika svalů (ramena sil), Hillův model, vazy v rozsahu pohybu, krok
 npm run typecheck
-npm run verify:all   # build + Playwright průchod (desktop, iPad, iPhone): animace, přechody, vrstvy, popisky, poznámky, screenshoty do docs/screenshots
+npm run verify:all   # build + Playwright průchod (desktop, iPad, iPhone): animace, přechody, vrstvy, popisky, poznámky,
+                     # izolace svalu, ukázka funkce, napětí šlach v kroku, screenshoty do docs/screenshots
 ```

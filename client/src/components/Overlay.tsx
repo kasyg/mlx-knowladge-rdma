@@ -4,6 +4,9 @@ import type { RegionId } from '@shared/types';
 import { useAtlas, models } from '../state/store.ts';
 import { cameraRuntime, regionAnchor } from '../three/CameraRig.tsx';
 import { atlasRuntime } from '../three/AtlasStage.tsx';
+import { connectionsOf } from '../three/muscles.ts';
+import type { AnimalModel } from '../three/animal.ts';
+import type { ConnectionRole } from '@shared/anatomy/connections';
 import { homeState } from '../three/HomeStage.tsx';
 import { haptic } from '../utils/haptics.ts';
 import { useCompact } from './hooks.ts';
@@ -21,6 +24,14 @@ interface Item {
 }
 
 const tmp = new THREE.Vector3();
+
+/** role of every connected structure of an isolated one (first role wins) */
+function isoRoles(m: AnimalModel, key: string): Map<string, ConnectionRole> {
+  const out = new Map<string, ConnectionRole>();
+  if (!m.muscles) return out;
+  for (const c of connectionsOf(m.muscles, m, key)) if (!out.has(c.key)) out.set(c.key, c.role);
+  return out;
+}
 
 /**
  * DOM overlay for structure labels (two-column atlas layout with leader lines),
@@ -75,7 +86,8 @@ export function Overlay() {
       const sideView = Math.abs(camX) < Math.abs(camZ) * 1.3;
       const farSide: 'L' | 'R' | null = sideView ? (camZ >= 0 ? 'R' : 'L') : null;
       const lang = s.settings.uiLang;
-      for (const r of m.payload.regions) {
+      const isolating = !!atlasRuntime.iso.key;
+      for (const r of isolating ? [] : m.payload.regions) {
         const ids: RegionId[] = r.sided ? ([`${r.id}_left`, `${r.id}_right`] as RegionId[]) : [r.id as RegionId];
         for (const id of ids) {
           const a = regionAnchor(m, id);
@@ -86,6 +98,22 @@ export function Overlay() {
         }
       }
       if (!s.labelsOn || s.quizHighlight) return out;
+      // isolation: label the structure and everything it is connected to, with its role
+      const iso = atlasRuntime.iso.key ? atlasRuntime.iso.members : null;
+      if (iso) {
+        const roleOf = isoRoles(m, atlasRuntime.iso.key!);
+        const list = [...iso.entries()].sort((a, b) => (a[1] === 'focus' ? -1 : b[1] === 'focus' ? 1 : a[1] === b[1] ? 0 : a[1] === 'solid' ? -1 : 1));
+        const maxIso = compact ? 7 : 16;
+        for (const [key, r] of list.slice(0, maxIso)) {
+          const inst = m.byKey.get(key);
+          if (!inst || !inst.node.visible) continue;
+          const names = inst.def.names;
+          const role = roleOf.get(key);
+          const sub = r === 'focus' ? (s.settings.labelLang === 'la' ? names[lang] : names.la) : role ? s.t(`role_${role}` as never) : undefined;
+          out.push({ key, text: s.label(names), sub, kind: 'label', anchor: inst.anchor, priority: r === 'focus' ? 9 : 1, side: inst.side, active: r === 'focus' || key === s.hovered || key === s.selected });
+        }
+        return out;
+      }
       const max = s.settings.showAllLabels ? 48 : compact ? 8 : 15;
       const cands: { inst: (typeof m.instances)[number]; dist: number }[] = [];
       for (const inst of m.instances) {

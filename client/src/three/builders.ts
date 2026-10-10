@@ -125,6 +125,8 @@ function buildSweep(r: SweepRecipe, ctx: BuildCtx, soft: boolean): Part {
   return part;
 }
 
+const LIMB_DEPTH: Record<number, number> = { 1: 0.4, 2: 0.58, 3: 0.72 };
+
 function buildSheet(r: SheetRecipe, ctx: BuildCtx): Part {
   const H = ctx.H;
   const isLimb = r.part === 'fl' || r.part === 'hl';
@@ -148,6 +150,8 @@ function buildSheet(r: SheetRecipe, ctx: BuildCtx): Part {
     dip: (r.dip ?? 0.0035) * H,
     skinOffset: 0.0035 * H + (layer - 1) * 0.006 * H,
     tile: 0.05 * H,
+    // limb muscles are thick bellies packed around the bones, deeper layers reach closer to them
+    depth: r.depth ?? (isLimb ? LIMB_DEPTH[Math.min(3, Math.max(1, layer))] : 0),
   });
   const out: Part = { geometry: g, material: 'muscleSheet' };
   if (isLimb) out.dynamic = { kind: 'sheet', sheet: g, partId: partId as LimbPartId };

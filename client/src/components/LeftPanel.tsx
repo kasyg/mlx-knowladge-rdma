@@ -2,7 +2,6 @@ import { useAtlas, layerDissolve, layerVisible, type Panel } from '../state/stor
 import { LAYER_IDS, SYSTEM_IDS, type RegionId, type LayerId, type SystemId } from '@shared/types';
 import { haptic } from '../utils/haptics.ts';
 import { atlasRuntime, limbOfRegion } from '../three/AtlasStage.tsx';
-import { activeRoles, strideAngles } from '../three/motion.ts';
 import { useCompact } from './hooks.ts';
 import { Quiz } from './Quiz.tsx';
 import { useState } from 'react';
@@ -136,12 +135,14 @@ export function MotionSection() {
   const phase = useAtlas((s) => s.motionPhase);
   const limb = limbOfRegion(region);
   if (!limb) return null;
-  const m = atlasRuntime.model;
-  const roles = activeRoles(limb, strideAngles(limb, phase));
-  const active = m
-    ? m.instances.filter((i) => i.side === (limb.endsWith('L') ? 'L' : 'R') && i.limbs.has(limb) && i.def.kind === 'muscle' && i.def.motion?.some((r) => roles.joints.includes(r.joint) && r.action === roles.action)).map((i) => label(i.def.names))
+  // from the muscle model: the most active muscles and the most strained tendons of the limb right now
+  const sys = atlasRuntime.model?.muscles;
+  const active = sys
+    ? [...sys.muscles.values()].filter((rt) => rt.live && rt.limb === limb && rt.st.a > 0.3).sort((a, b) => b.st.a - a.st.a).map((rt) => label(rt.inst.def.names))
     : [];
-  const loaded = m && stance ? m.instances.filter((i) => i.side === (limb.endsWith('L') ? 'L' : 'R') && i.limbs.has(limb) && (i.def.kind === 'tendon' || i.def.kind === 'ligament')).map((i) => label(i.def.names)) : [];
+  const loaded = sys
+    ? [...sys.tendons.values()].filter((tr) => tr.inst.limbs.has(limb) && tr.strain > 0.012).sort((a, b) => b.strain - a.strain).map((tr) => `${label(tr.inst.def.names)} (${(tr.strain * 100).toFixed(1)} %)`)
+    : [];
   return (
     <section className="panel-section">
       <h3>{t('motion')}</h3>
@@ -152,7 +153,7 @@ export function MotionSection() {
           <div className="phase-bar"><span style={{ width: `${phase * 100}%` }} /></div>
           <p><strong>{t('phase')}:</strong> {stance ? t('phaseStance') : t('phaseSwing')}</p>
           <p><strong>{t('activeMuscles')}:</strong> {active.slice(0, 8).join(', ') || '–'}</p>
-          {stance && loaded.length > 0 && <p><strong>{t('loadedTendons')}:</strong> {loaded.slice(0, 6).join(', ')}</p>}
+          {loaded.length > 0 && <p><strong>{t('loadedTendons')}:</strong> {loaded.slice(0, 6).join(', ')}</p>}
         </div>
       )}
     </section>

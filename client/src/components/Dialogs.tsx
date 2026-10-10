@@ -1,6 +1,7 @@
 import { useAtlas } from '../state/store.ts';
 import { haptic } from '../utils/haptics.ts';
-import type { UiLang, LabelLang } from '@shared/types';
+import type { UiLang, LabelLang, RenderQuality } from '@shared/types';
+import { renderInfo, effectiveQuality } from '../three/quality.ts';
 
 function Modal({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode; wide?: boolean }) {
   if (!open) return null;
@@ -59,6 +60,18 @@ export function SettingsDialog() {
       <Row label={t('animationSpeed')}>
         <Seg value={String(settings.animationSpeed)} options={[{ v: '0.5', l: '0.5×' }, { v: '1', l: '1×' }, { v: '2', l: '2×' }]} onChange={(v) => update({ animationSpeed: Number(v) })} />
       </Row>
+      <Row label={t('quality')}>
+        <Seg<RenderQuality>
+          value={settings.quality ?? 'auto'}
+          options={[
+            { v: 'auto', l: `${t('qualityAuto')} (${t(effectiveQuality('auto', renderInfo.detected) === 'high' ? 'qualityHigh' : 'qualityLow').toLowerCase()})` },
+            { v: 'high', l: t('qualityHigh') },
+            { v: 'low', l: t('qualityLow') },
+          ]}
+          onChange={(v) => update({ quality: v })}
+        />
+      </Row>
+      <p className="muted small setting-hint">{t('qualityHint')}</p>
     </Modal>
   );
 }

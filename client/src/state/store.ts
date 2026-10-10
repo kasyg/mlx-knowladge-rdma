@@ -20,7 +20,8 @@ export type CameraCommand =
   | { type: 'overview' }
   | { type: 'view'; view: 'left' | 'right' | 'front' | 'back' | 'top' | 'bottom' }
   | { type: 'zoom'; delta: number }
-  | { type: 'fitStructure'; key: string };
+  | { type: 'fitStructure'; key: string }
+  | { type: 'fitKeys'; keys: string[]; focus: string };
 
 /** Non-reactive registry of built 3D models (kept out of the store on purpose). */
 export const models = {
@@ -61,6 +62,11 @@ export interface AtlasState {
   quizHighlight: string | null;
   /** manifest entries of the imported 3D models of the current species (for credits) */
   external: ExternalEntry[];
+  /** instance key of the structure shown alone (with what it is connected to) */
+  isolated: string | null;
+  isoOpts: IsoOpts;
+  /** instance key of the muscle whose function is being demonstrated */
+  demo: string | null;
 
   t: (k: UiKey) => string;
   label: (names: { la: string; cs: string; en: string }) => string;
@@ -93,6 +99,20 @@ export interface AtlasState {
   setKnown: (structureId: string, known: boolean) => void;
   reloadNotes: () => Promise<void>;
   setQuizHighlight: (key: string | null) => void;
+  isolate: (key: string | null) => void;
+  setIsoOpt: (k: keyof IsoOpts, v: boolean) => void;
+  setDemo: (key: string | null) => void;
+}
+
+export interface IsoOpts {
+  /** muscles acting with it (ghosted) */
+  synergists: boolean;
+  /** muscles acting against it (ghosted) */
+  antagonists: boolean;
+  /** its nerve and artery */
+  supply: boolean;
+  /** the rest of the animal as a faint ghost */
+  context: boolean;
 }
 
 const autoMode = () => ({ skin: 'auto', muscles: 'auto', tendons: 'auto', cartilage: 'auto', bones: 'auto' }) as Record<LayerId, LayerMode>;
@@ -155,6 +175,9 @@ export const useAtlas = create<AtlasState>((set, get) => ({
   modelVersion: 0,
   external: [],
   quizHighlight: null,
+  isolated: null,
+  isoOpts: { synergists: true, antagonists: true, supply: false, context: false },
+  demo: null,
 
   t: (k) => UI[get().settings.uiLang][k] ?? k,
   label: (names) => {
@@ -181,7 +204,7 @@ export const useAtlas = create<AtlasState>((set, get) => ({
   },
 
   goHome: () => {
-    set({ view: 'home', region: null, selected: null, hovered: null, motionOn: false, panel: 'none', spinning: null, loading: { active: false, label: '', progress: 0 } });
+    set({ view: 'home', region: null, selected: null, hovered: null, motionOn: false, isolated: null, demo: null, panel: 'none', spinning: null, loading: { active: false, label: '', progress: 0 } });
     if (typeof history !== 'undefined') history.pushState({}, '', '/');
   },
 
@@ -244,6 +267,8 @@ export const useAtlas = create<AtlasState>((set, get) => ({
       systems: noSystems(),
       ghostSkin: false,
       motionOn: false,
+      isolated: null,
+      demo: null,
       spinning: null,
       loading: { active: false, label: '', progress: 1 },
       panel: 'none',
@@ -335,6 +360,19 @@ export const useAtlas = create<AtlasState>((set, get) => ({
     if (id) void apiSetProgress(get().deviceId, id, structureId, known);
   },
   setQuizHighlight: (key) => set({ quizHighlight: key }),
+  isolate: (key) => {
+    const prev = get().isolated;
+    if (key) {
+      set({ isolated: key, selected: key, panel: 'detail' });
+      // the camera is fitted by the stage once the members of the isolation are known
+    } else {
+      set({ isolated: null, demo: get().demo && get().demo === prev ? null : get().demo });
+      const r = get().region;
+      if (prev) get().camera(r ? { type: 'focusRegion', region: r } : { type: 'overview' });
+    }
+  },
+  setIsoOpt: (k, v) => set((s) => ({ isoOpts: { ...s.isoOpts, [k]: v } })),
+  setDemo: (key) => set({ demo: key, motionOn: key ? false : get().motionOn }),
   reloadNotes: async () => {
     const id = get().speciesId;
     if (!id) return;

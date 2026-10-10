@@ -198,8 +198,51 @@ function attach(page) {
     await waitFrames(page, 6);
   }
   check('limb motion animates the hindlimb joints', motion.limb === 'hl_L' && (motion.stifle > 0.001 || motion.hock > 0.001), JSON.stringify(motion));
+  // tendons and ligaments: loaded in the stride, but never beyond what collagen survives
+  let peakStrain = { key: '', strain: 0 };
+  for (let i = 0; i < 6; i++) {
+    const p = await page.evaluate(() => {
+      let best = { key: '', strain: 0 };
+      for (const t of window.__vetatlasRuntime.model.muscles.tendons.values()) if (t.strain > best.strain) best = { key: t.key, strain: t.strain };
+      return best;
+    });
+    if (p.strain > peakStrain.strain) peakStrain = p;
+    await waitFrames(page, 3);
+  }
+  check('tendon and ligament strain stays physiological during the walk', peakStrain.strain > 0.005 && peakStrain.strain < 0.1, `${peakStrain.key} ${(peakStrain.strain * 100).toFixed(1)} %`);
   await page.screenshot({ path: join(OUT, 'desktop-09-motion.jpg'), type: 'jpeg', quality: 82 });
   await page.evaluate(() => window.__vetatlas.store.getState().setMotionOn(false));
+
+  // isolation of one muscle with its connections, and its function
+  await page.evaluate(() => { const s = window.__vetatlas.store.getState(); s.setRegion('forelimb_left'); s.select('m_biceps_brachii_L'); s.isolate('m_biceps_brachii_L'); });
+  await waitFrames(page, 12);
+  const iso = await page.evaluate(() => {
+    const r = window.__vetatlasRuntime;
+    const vis = new Set(r.model.instances.filter((i) => i.node.visible).map((i) => i.key));
+    return { focus: r.iso.members.get('m_biceps_brachii_L'), scapula: vis.has('scapula_L'), radius: vis.has('radius_L'), lacertus: vis.has('lacertus_fibrosus_L'), skin: [...vis].some((k) => k.startsWith('cutis')), bar: !!document.querySelector('.isolation-bar') };
+  });
+  check('isolating a muscle shows it with the bones and tendon it attaches to', iso.focus === 'focus' && iso.scapula && iso.radius && iso.lacertus && !iso.skin && iso.bar, JSON.stringify(iso));
+  await page.evaluate(() => window.__vetatlas.store.getState().setDemo('m_biceps_brachii_L'));
+  const demo = { elbowMin: 1e9, elbowMax: -1e9, aMax: 0, states: new Set() };
+  for (let i = 0; i < 8; i++) {
+    await waitFrames(page, 3);
+    const d = await page.evaluate(() => { const r = window.__vetatlasRuntime; const rt = r.model.muscles.muscles.get('m_biceps_brachii_L'); return { elbow: r.angles?.elbow ?? 0, a: rt.st.a, state: rt.st.state }; });
+    demo.elbowMin = Math.min(demo.elbowMin, d.elbow);
+    demo.elbowMax = Math.max(demo.elbowMax, d.elbow);
+    demo.aMax = Math.max(demo.aMax, d.a);
+    demo.states.add(d.state);
+  }
+  check('the function demo flexes the elbow and drives the muscle model', demo.elbowMax - demo.elbowMin > 15 && demo.aMax > 0.4, `elbow ${demo.elbowMin.toFixed(0)}–${demo.elbowMax.toFixed(0)}°, a≤${demo.aMax.toFixed(2)}, ${[...demo.states].join('/')}`);
+  const tiles = await page.locator('.function-hud .fh-tile').count();
+  check('live readout shows fibre length, activation, force and tendon strain', tiles === 4, String(tiles));
+  await page.screenshot({ path: join(OUT, 'desktop-09b-isolation-demo.jpg'), type: 'jpeg', quality: 82 });
+  await page.keyboard.press('Escape');
+  await waitFrames(page, 2);
+  const esc1 = await page.evaluate(() => { const s = window.__vetatlas.store.getState(); return { demo: s.demo, isolated: s.isolated }; });
+  await page.keyboard.press('Escape');
+  await waitFrames(page, 2);
+  const esc2 = await page.evaluate(() => window.__vetatlas.store.getState().isolated);
+  check('Esc stops the demo first, then leaves the isolation', !esc1.demo && esc1.isolated === 'm_biceps_brachii_L' && !esc2, JSON.stringify({ esc1, esc2 }));
 
   // search
   await page.fill('.search input', 'humerus');
@@ -221,6 +264,9 @@ function attach(page) {
   // settings dialog + theme
   await page.click('.icon-btn[title="Settings"], .icon-btn[title="Nastavení"]');
   await page.waitForSelector('.modal');
+  const qualityRow = await page.locator('.modal .setting-row:has-text("Rendering quality"), .modal .setting-row:has-text("Kvalita vykreslování")').locator('.seg button').count();
+  const qualityNow = await page.locator('.atlas-canvas').getAttribute('data-quality');
+  check('rendering quality offers auto / high / low (auto is low on a software GPU)', qualityRow === 3 && qualityNow === 'low', `${qualityRow} options, now ${qualityNow}`);
   await page.click('.modal .seg button:has-text("Dark")');
   await page.waitForTimeout(300);
   check('dark theme applies', (await page.evaluate(() => document.documentElement.dataset.theme)) === 'dark');

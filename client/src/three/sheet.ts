@@ -23,6 +23,11 @@ export interface SheetSpec {
   nt?: number;
   /** texture repeat scale (metres per fibre-texture tile) */
   tile?: number;
+  /**
+   * volumetric belly: fraction of the way from the skin to the axis of the body
+   * part (the bone for limbs) that the muscle reaches at its thickest point
+   */
+  depth?: number;
 }
 
 const bez = (a: UV, m: UV | null | undefined, b: UV, x: number): UV => {
@@ -46,6 +51,8 @@ export function coons(spec: SheetSpec, s: number, t: number): UV {
 export class SheetGeometry extends THREE.BufferGeometry {
   readonly ns: number;
   readonly nt: number;
+  /** runtime thickness factor of the belly (muscle physics: volume conservation, activation) */
+  thickness = 1;
   constructor(part: SurfacePart, readonly spec: SheetSpec) {
     super();
     this.ns = spec.ns ?? 14;
@@ -91,7 +98,10 @@ export class SheetGeometry extends THREE.BufferGeometry {
     const n = W * (nt + 1);
     const p = new THREE.Vector3();
     const nrm = new THREE.Vector3();
+    const ax = new THREE.Vector3();
+    const dir = new THREE.Vector3();
     const tile = spec.tile ?? 0.06;
+    const depth = spec.depth ?? 0;
     // metric extents for texture tiling
     const [su, sv] = part.scale(coons(spec, 0.5, 0.5)[0], coons(spec, 0.5, 0.5)[1]);
     const c0 = spec.corners[0], c1 = spec.corners[1], c3 = spec.corners[3];
@@ -108,10 +118,23 @@ export class SheetGeometry extends THREE.BufferGeometry {
         const edge = 1 - Math.pow(dome, 0.45); // 1 at the rim, 0 in the belly
         const outerDepth = spec.skinOffset + spec.dip * edge;
         // the inner face always lies behind the outer one: a thin rim, a thick belly
-        const innerDepth = outerDepth + 0.0008 + spec.bulge * dome;
+        let belly = spec.bulge * dome;
+        dir.copy(nrm).negate();
+        if (depth > 0 && part.axisPoint) {
+          // a volumetric belly reaches towards the bone: inner face along the way to the part's axis
+          part.axisPoint(v, ax);
+          const toAxis = ax.sub(p);
+          const dAxis = toAxis.length();
+          if (dAxis > 1e-5) {
+            toAxis.multiplyScalar(1 / dAxis);
+            dir.lerp(toAxis, 0.65).normalize();
+            belly = Math.max(belly, depth * Math.pow(dome, 0.6) * Math.max(0, dAxis - outerDepth));
+          }
+        }
+        const innerDepth = outerDepth + 0.0008 + belly * this.thickness;
         const k = i * W + j;
         pos.setXYZ(k, p.x - nrm.x * outerDepth, p.y - nrm.y * outerDepth, p.z - nrm.z * outerDepth);
-        pos.setXYZ(n + k, p.x - nrm.x * innerDepth, p.y - nrm.y * innerDepth, p.z - nrm.z * innerDepth);
+        pos.setXYZ(n + k, p.x - nrm.x * outerDepth + dir.x * (innerDepth - outerDepth), p.y - nrm.y * outerDepth + dir.y * (innerDepth - outerDepth), p.z - nrm.z * outerDepth + dir.z * (innerDepth - outerDepth));
         uv.setXY(k, (s * widthM) / tile, (t * lengthM) / tile);
         uv.setXY(n + k, (s * widthM) / tile, (t * lengthM) / tile);
       }
@@ -121,5 +144,17 @@ export class SheetGeometry extends THREE.BufferGeometry {
     this.computeVertexNormals();
     this.computeBoundingBox();
     this.computeBoundingSphere();
+  }
+  /** current point in the middle of the muscle's thickness at sheet coordinates (s, t); t = 0 origin edge, 1 insertion edge */
+  edgePoint(s: number, t: number, out = new THREE.Vector3()): THREE.Vector3 {
+    const { ns, nt } = this;
+    const W = ns + 1;
+    const n = W * (nt + 1);
+    const j = Math.round(Math.min(1, Math.max(0, s)) * ns);
+    const i = Math.round(Math.min(1, Math.max(0, t)) * nt);
+    const pos = this.attributes.position as THREE.BufferAttribute;
+    const k = i * W + j;
+    out.set((pos.getX(k) + pos.getX(n + k)) / 2, (pos.getY(k) + pos.getY(n + k)) / 2, (pos.getZ(k) + pos.getZ(n + k)) / 2);
+    return out;
   }
 }

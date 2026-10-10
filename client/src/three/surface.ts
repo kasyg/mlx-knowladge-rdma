@@ -22,6 +22,8 @@ export interface SurfacePart {
   sample(u: number, v: number, target?: THREE.Vector3): THREE.Vector3;
   /** outward unit normal (numerical) */
   normal(u: number, v: number, target?: THREE.Vector3): THREE.Vector3;
+  /** point on the part's axis (spine of the trunk, bone line of a limb) at v */
+  axisPoint?(v: number, target?: THREE.Vector3): THREE.Vector3;
   /** nearest (u, v) of a world point */
   uvOf(p: V3): [number, number];
   /** approximate metric scale: metres per unit u (circumference) and per unit v (length) at (u, v) */
@@ -177,6 +179,10 @@ class LoftPart implements SurfacePart {
     if (target.dot(this.tmpC) < 0) target.negate();
     return target;
   }
+  axisPoint(v: number, target = new THREE.Vector3()): THREE.Vector3 {
+    this.surf.frame(Math.min(1, Math.max(0, v)), this.f);
+    return target.copy(this.f.P);
+  }
   uvOf(p: V3): [number, number] {
     const q = new THREE.Vector3(p[0], p[1], p[2]);
     let best = 0, bd = Infinity;
@@ -244,6 +250,10 @@ class LimbPart implements SurfacePart {
     this.sample(u, v, this.tmpC).sub(this.f.P);
     if (target.dot(this.tmpC) < 0) target.negate();
     return target;
+  }
+  axisPoint(v: number, target = new THREE.Vector3()): THREE.Vector3 {
+    this.surf.frame(Math.min(1, Math.max(0, v)), this.f);
+    return target.copy(this.f.P);
   }
   uvOf(p: V3): [number, number] {
     const q = new THREE.Vector3(p[0], p[1], p[2]);

@@ -191,6 +191,26 @@ export function CameraRig() {
       case 'zoom':
         c.dolly(cmd.delta * c.distance, true);
         break;
+      case 'fitKeys': {
+        // isolation: fit the structure and what it connects to, orbit around the structure itself
+        const m = atlasRuntime.model;
+        if (!m) break;
+        const box = new THREE.Box3();
+        for (const k of cmd.keys) {
+          const inst = m.byKey.get(k);
+          if (inst && !inst.box.isEmpty()) box.union(inst.box);
+        }
+        const focus = m.byKey.get(cmd.focus);
+        if (box.isEmpty() && focus) box.copy(focus.box);
+        if (box.isEmpty()) break;
+        const sz = new THREE.Vector3();
+        box.getSize(sz);
+        const p = Math.max(sz.x, sz.y, sz.z) * 0.12 + 0.02;
+        lastRegion.current = { box: box.clone(), az: c.azimuthAngle, polar: c.polarAngle, region: lastRegion.current?.region ?? ('head' as RegionId) };
+        c.fitToBox(box, true, { paddingTop: p, paddingBottom: p, paddingLeft: p, paddingRight: p });
+        box.getCenter(cameraRuntime.focusCenter);
+        break;
+      }
       case 'fitStructure': {
         const m = atlasRuntime.model;
         const inst = m?.byKey.get(cmd.key);
@@ -219,7 +239,8 @@ export function CameraRig() {
         c.dolly(-e.deltaY * 0.0012 * c.distance, true);
         return;
       }
-      if (e.ctrlKey || e.metaKey) {
+      if (e.ctrlKey || e.metaKey || useAtlas.getState().isolated) {
+        // in the isolation view there are no layers to peel: the wheel zooms
         c.dolly(-e.deltaY * 0.002 * c.distance, true);
         return;
       }

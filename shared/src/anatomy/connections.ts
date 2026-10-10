@@ -6,7 +6,7 @@
  * muscles attaching to it, a nerve the muscles it supplies …).
  */
 import type { MotionRole, StructureDef } from '../types.ts';
-import { MECHANICS, TENDON_BONES, JOINTS, type MuscleMech } from './mechanics.ts';
+import { MECHANICS, TENDON_BONES, JOINTS, mechanicsFor, type MuscleMech } from './mechanics.ts';
 
 export type ConnectionRole =
   | 'origin'
@@ -64,7 +64,7 @@ export function pickPresent(candidates: string[] | undefined, present: Set<strin
   return null;
 }
 
-export function buildConnections(structures: StructureDef[]): ConnectionGraph {
+export function buildConnections(structures: StructureDef[], species = 'horse'): ConnectionGraph {
   const present = new Set(structures.map((s) => s.id));
   const links = new Map<string, Connection[]>();
   const joints = new Map<string, JointLink[]>();
@@ -79,7 +79,7 @@ export function buildConnections(structures: StructureDef[]): ConnectionGraph {
 
   for (const s of structures) {
     if (s.kind !== 'muscle') continue;
-    const m = MECHANICS[s.id];
+    const m = mechanicsFor(s.id, species);
     if (m) {
       mech.set(s.id, m);
       for (const site of m.origin) {

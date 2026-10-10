@@ -5,7 +5,7 @@
  * anatomical flexion (degrees), negative ones extension.
  */
 import type { PointRef, Side } from '@shared/types';
-import type { Rig, V3 } from '@shared/rig';
+import { resolvePoint, type Rig, type V3 } from '@shared/rig';
 import { segmentOfLandmark, FORELIMB_CHAIN, HINDLIMB_CHAIN, type JointName, type LimbKey, type SegmentId } from './segments.ts';
 
 /**
@@ -52,6 +52,35 @@ export function segmentOfRef(ref: PointRef, side: Side | null): SegmentId | null
   if (Array.isArray(ref)) return null;
   const base = ref.at ?? ref.between?.[0];
   return base ? segmentOfLandmark(base.replace('{S}', S)) : null;
+}
+
+const lerp3 = (a: V3, b: V3, t: number): V3 => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+
+/**
+ * Posed position of a path point (tendon, ligament, vessel, nerve). The offset
+ * from its landmark is part of that landmark's bone and turns with it; a point
+ * between two landmarks on either side of a joint follows both posed ends and
+ * turns its offset with the nearer one. Same rule as the runtime (animal.ts).
+ */
+export function posePathPoint(rig: Rig, ref: PointRef, side: Side, angles: JointAngles): V3 {
+  const name = (n: string) => n.replace('{S}', side);
+  if (typeof ref === 'string') return posePoint(rig, rig.landmarks[name(ref)], segmentOfLandmark(name(ref)), angles);
+  if (Array.isArray(ref)) return resolvePoint(ref, rig, side);
+  const rest = resolvePoint(ref, rig, side);
+  if (ref.at && !ref.between) return posePoint(rig, rest, segmentOfLandmark(name(ref.at)), angles);
+  if (!ref.between) return rest;
+  const a = name(ref.between[0]);
+  const b = name(ref.between[1]);
+  const sa = segmentOfLandmark(a);
+  const sb = segmentOfLandmark(b);
+  if (sa === sb) return posePoint(rig, rest, sa, angles);
+  const t = ref.t ?? 0.5;
+  const restBase = lerp3(rig.landmarks[a], rig.landmarks[b], t);
+  const base = lerp3(posePoint(rig, rig.landmarks[a], sa, angles), posePoint(rig, rig.landmarks[b], sb, angles), t);
+  const seg = t < 0.5 ? sa : sb;
+  const o0 = posePoint(rig, restBase, seg, angles);
+  const o1 = posePoint(rig, rest, seg, angles);
+  return [base[0] + o1[0] - o0[0], base[1] + o1[1] - o0[1], base[2] + o1[2] - o0[2]];
 }
 
 export const dist3 = (a: V3, b: V3) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);

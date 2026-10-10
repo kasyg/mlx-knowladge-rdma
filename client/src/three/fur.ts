@@ -82,36 +82,3 @@ export function furTexture(fur: FurParams, key: string): THREE.CanvasTexture {
   cache.set(ck, tex);
   return tex;
 }
-
-let fiberTex: THREE.CanvasTexture | null = null;
-/** Fine longitudinal striations (fibres run along v) used as a colour multiplier on muscle sheets. */
-export function muscleFiberTexture(): THREE.CanvasTexture {
-  if (fiberTex) return fiberTex;
-  const size = 512;
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext('2d')!;
-  const rnd = mulberry32(4242);
-  const bundles = makeNoise(size, 48, rnd);
-  const fine = makeNoise(size, 160, rnd);
-  const along = makeNoise(size, 6, rnd);
-  const img = ctx.createImageData(size, size);
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const b = bundles(x, 0) * 0.55 + fine(x, 0) * 0.3 + along(x, y) * 0.15;
-      const streak = 0.78 + 0.34 * b + (fine(x, y) - 0.5) * 0.08;
-      const v = Math.min(1, Math.max(0, streak));
-      const i = (y * size + x) * 4;
-      img.data[i] = 255 * v;
-      img.data[i + 1] = 255 * (v * 0.93 + 0.03);
-      img.data[i + 2] = 255 * (v * 0.9 + 0.05);
-      img.data[i + 3] = 255;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  fiberTex = new THREE.CanvasTexture(canvas);
-  fiberTex.colorSpace = THREE.SRGBColorSpace;
-  fiberTex.wrapS = fiberTex.wrapT = THREE.RepeatWrapping;
-  fiberTex.anisotropy = 4;
-  return fiberTex;
-}

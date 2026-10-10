@@ -4,10 +4,10 @@ import { buildRig, resolvePoint, pointRefNames, type Rig } from '@shared/rig';
 import { recipesOf } from '@shared/anatomy/index';
 import { buildRecipe, makeCtx, mergeParts, type MaterialKey, type Part, type DynamicPart } from './builders.ts';
 import { BodySurface, type LimbPartId } from './surface.ts';
-import { muscleFiberTexture } from './fur.ts';
-import { makeMaterial, uniformsOf, KIND_COLORS, ID_COLORS, type VetUniforms } from './materials.ts';
+import { makeMaterial, uniformsOf, enableShadows, KIND_COLORS, ID_COLORS, TISSUE, tissueOf, type VetUniforms } from './materials.ts';
 import { furTexture } from './fur.ts';
 import { SweepGeometry, type V3 } from './sweep.ts';
+import { SheetGeometry } from './sheet.ts';
 import { segmentOfLandmark, limbOfLandmark, FORELIMB_CHAIN, HINDLIMB_CHAIN, type LimbKey, type SegmentId, type JointName } from './segments.ts';
 import type { ExternalResult } from './external.ts';
 
@@ -28,6 +28,8 @@ export interface StructureInstance {
   dynamics: DynamicPart[];
   limbs: Set<LimbKey>;
   pathLength: number;
+  /** the muscle's shape geometries in recipe order (sheets / sweeps; first = origin side) */
+  shapes: (SheetGeometry | SweepGeometry)[];
   isSoftOf: (limb: LimbKey) => boolean;
   /** id of the external model entry whose meshes replaced the procedural geometry */
   external?: string;
@@ -51,9 +53,16 @@ export interface AnimalModel {
   bounds: THREE.Box3;
   /** current (possibly animated) landmark position */
   landmarkNow: (name: string) => V3;
+  /** a rest-pose point carried rigidly by a limb segment into the current pose (null = trunk, static) */
+  pointNow: (seg: SegmentId | null, rest: V3) => V3;
   surface: BodySurface;
   /** imported (scanned / modelled) meshes merged into the model, see external.ts */
   external?: ExternalResult[];
+  /** pivot node of a limb segment and its rest position */
+  segmentNode: (seg: SegmentId) => THREE.Object3D;
+  segmentRest: (seg: SegmentId) => THREE.Vector3;
+  /** muscle physics, attachments and the connection graph (muscles.ts), prepared when the atlas opens */
+  muscles?: import('./muscles.ts').MuscleSystem;
   dispose: () => void;
 }
 
@@ -62,11 +71,11 @@ const MAT_COLORS: Record<Exclude<MaterialKey, 'default' | 'fur' | 'muscleSheet'>
   eye: { color: '#120d0a', roughness: 0.12, metalness: 0.1 },
   hoof: { color: '#4a4039', roughness: 0.55 },
   horn: { color: '#d4c8b2', roughness: 0.5 },
-  cartilage: { color: '#a6c6d6', roughness: 0.55 },
+  cartilage: { color: '#bcd3dc', roughness: 0.3 },
   pad: { color: '#2a2320', roughness: 0.8 },
   tooth: { color: '#f3efe4', roughness: 0.35 },
   pink: { color: '#d9a9a1', roughness: 0.7 },
-  tendonCap: { color: '#efe8da', roughness: 0.6 },
+  tendonCap: { color: '#eeeae2', roughness: 0.4 },
 };
 
 function colorFor(def: StructureDef): string {
@@ -101,7 +110,6 @@ export async function buildAnimal(payload: SpeciesPayload, opts: BuildOptions = 
   const instances: StructureInstance[] = [];
   const byKey = new Map<string, StructureInstance>();
   const fur = furTexture(payload.rig.fur, payload.meta.id);
-  const fiber = muscleFiberTexture();
   const limbs = new Map<LimbKey, LimbPivots>();
   const surface = new BodySurface(rig, (n) => {
     const p = rig.landmarks[n];
@@ -145,6 +153,13 @@ export async function buildAnimal(payload: SpeciesPayload, opts: BuildOptions = 
   };
 
   const tmpV = new THREE.Vector3();
+  const pointNow = (seg: SegmentId | null, rest: V3): V3 => {
+    if (!seg) return rest;
+    const base = segmentRestPos(seg);
+    tmpV.set(rest[0] - base.x, rest[1] - base.y, rest[2] - base.z);
+    segmentNode(seg).localToWorld(tmpV);
+    return [tmpV.x, tmpV.y, tmpV.z];
+  };
   const landmarkNow = (name: string): V3 => {
     const rest = rig.landmarks[name];
     if (!rest) throw new Error(`Unknown landmark ${name}`);
@@ -182,11 +197,13 @@ export async function buildAnimal(payload: SpeciesPayload, opts: BuildOptions = 
     const ctx = makeCtx(rig, payload, side, surface);
     const parts: Part[] = [];
     const dynamics: DynamicPart[] = [];
+    const shapes: (SheetGeometry | SweepGeometry)[] = [];
     const limbSet = new Set<LimbKey>();
     const soft = def.kind !== 'skin' && def.kind !== 'bone' && def.kind !== 'cartilage' ? true : def.kind === 'bone' || def.kind === 'cartilage';
     for (const recipe of recipesOf(def)) {
       const built = buildRecipe(recipe, ctx, soft);
       for (const p of built) {
+        if (def.kind === 'muscle' && (p.geometry instanceof SheetGeometry || p.geometry instanceof SweepGeometry)) shapes.push(p.geometry);
         if (p.dynamic && p.dynamic.kind === 'sweep') {
           const names = p.dynamic.path.flatMap((pr) => pointRefNames(pr)).map((n) => n.replace('{S}', side ?? 'L'));
           const limbNames = names.map(limbOfLandmark).filter((x): x is LimbKey => !!x);
@@ -228,12 +245,13 @@ export async function buildAnimal(payload: SpeciesPayload, opts: BuildOptions = 
           const hsl = { h: 0, s: 0, l: 0 };
           c.getHSL(hsl);
           c.setHSL(hsl.h + (((hsh % 13) / 13) - 0.5) * 0.02, Math.min(1, hsl.s + (((hsh >> 4) % 11) / 11 - 0.5) * 0.08), Math.min(1, hsl.l + (((hsh >> 8) % 17) / 17 - 0.5) * 0.07));
-          mat = makeMaterial({ color: c, map: fiber, roughness: 0.48, highlight: '#ff5a3c', H });
+          mat = makeMaterial({ color: c, roughness: 0.46, highlight: '#ff5a3c', H, tissue: TISSUE.muscle });
+          uniformsOf(mat).uFasc.value = 22;
         }
-        else if (mk === 'default') mat = makeMaterial({ color: colorFor(def), highlight: def.kind === 'muscle' ? '#ff5a3c' : def.kind === 'tendon' || def.kind === 'ligament' ? '#ffb347' : '#ffd24d', roughness: def.kind === 'bone' ? 0.62 : def.kind === 'tendon' || def.kind === 'ligament' ? 0.55 : def.kind === 'muscle' ? 0.5 : 0.55, H, side: def.id.startsWith('m_obliquus') || def.id === 'm_transversus_abdominis' || def.id === 'mm_intercostales' || def.id === 'diaphragma' ? THREE.DoubleSide : THREE.FrontSide });
+        else if (mk === 'default') mat = makeMaterial({ tissue: tissueOf(def.kind), color: colorFor(def), highlight: def.kind === 'muscle' ? '#ff5a3c' : def.kind === 'tendon' || def.kind === 'ligament' ? '#ffb347' : '#ffd24d', roughness: def.kind === 'bone' ? 0.62 : def.kind === 'tendon' || def.kind === 'ligament' ? 0.55 : def.kind === 'muscle' ? 0.5 : 0.55, H, side: def.id.startsWith('m_obliquus') || def.id === 'm_transversus_abdominis' || def.id === 'mm_intercostales' || def.id === 'diaphragma' ? THREE.DoubleSide : THREE.FrontSide });
         else {
           const c = MAT_COLORS[mk];
-          mat = makeMaterial({ color: c.color, roughness: c.roughness, metalness: c.metalness, H });
+          mat = makeMaterial({ color: c.color, roughness: c.roughness, metalness: c.metalness, H, tissue: mk === 'cartilage' ? TISSUE.cartilage : mk === 'tendonCap' ? TISSUE.tendon : TISSUE.none });
         }
         const u = uniformsOf(mat);
         u.uDissolveY.value.set(0, rig.params.spine.withersTop * 1.15);
@@ -257,8 +275,7 @@ export async function buildAnimal(payload: SpeciesPayload, opts: BuildOptions = 
         uniforms.push(u);
       }
       const mesh = new THREE.Mesh(p.geometry, mat);
-      mesh.castShadow = true;
-      mesh.receiveShadow = false;
+      enableShadows(mesh);
       mesh.userData.key = node.name;
       if (p.segment) {
         const segNode = segmentNode(p.segment as SegmentId);
@@ -296,6 +313,7 @@ export async function buildAnimal(payload: SpeciesPayload, opts: BuildOptions = 
       dynamics,
       limbs: limbSet,
       pathLength,
+      shapes,
       isSoftOf: (limb) => dynamics.length > 0 && limbSet.has(limb),
     };
     return inst;
@@ -314,7 +332,10 @@ export async function buildAnimal(payload: SpeciesPayload, opts: BuildOptions = 
     skinOnly: !!opts.skinOnly,
     bounds,
     landmarkNow,
+    pointNow,
     surface,
+    segmentNode,
+    segmentRest: segmentRestPos,
     dispose: () => {
       for (const inst of instances) {
         inst.meshes.forEach((m) => m.geometry.dispose());
@@ -330,7 +351,7 @@ export function updateSoftTissue(model: AnimalModel, limb: LimbKey) {
   const { rig } = model;
   const side = limb.endsWith('L') ? 'L' : 'R';
   const ctx = {
-    resolve: (ref: PointRef): V3 => resolveNow(ref, rig, side, model.landmarkNow),
+    resolve: (ref: PointRef): V3 => resolveNow(ref, rig, side, model),
   };
   model.surface.refreshLimb(limb as LimbPartId, model.landmarkNow);
   const part = model.surface.part(limb as LimbPartId);
@@ -351,18 +372,33 @@ export function updateSoftTissue(model: AnimalModel, limb: LimbKey) {
   }
 }
 
-function resolveNow(ref: PointRef, rig: Rig, side: Side, now: (n: string) => V3): V3 {
-  const H = rig.H;
-  const sgn = side === 'L' ? 1 : -1;
+/**
+ * Current position of a path point. An offset from a landmark is part of the
+ * bone it belongs to, so it turns with that bone: a palmar tendon stays behind
+ * the cannon however far the limb is flexed, and short ligaments keep their
+ * length unless the joint they cross really stretches them.
+ */
+function resolveNow(ref: PointRef, rig: Rig, side: Side, model: AnimalModel): V3 {
   const name = (n: string) => n.replace('{S}', side);
-  if (typeof ref === 'string') return now(name(ref));
+  if (typeof ref === 'string') return model.landmarkNow(name(ref));
   if (Array.isArray(ref)) return resolvePoint(ref, rig, side);
-  let base: V3;
-  if (ref.between) {
-    const a = now(name(ref.between[0])), b = now(name(ref.between[1]));
-    const t = ref.t ?? 0.5;
-    base = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-  } else if (ref.at) base = now(name(ref.at));
-  else base = [0, 0, 0];
-  return [base[0] + (ref.dx ?? 0) * H, base[1] + (ref.dy ?? 0) * H, base[2] + (ref.dz ?? 0) * H + (ref.lat ?? 0) * H * sgn];
+  const rest = resolvePoint(ref, rig, side);
+  if (ref.at && !ref.between) return model.pointNow(segmentOfLandmark(name(ref.at)), rest);
+  if (!ref.between) return rest;
+  const a = name(ref.between[0]);
+  const b = name(ref.between[1]);
+  const sa = segmentOfLandmark(a);
+  const sb = segmentOfLandmark(b);
+  if (sa === sb) return model.pointNow(sa, rest);
+  // spanning a joint: follow both posed ends, the offset turns with the nearer bone
+  const t = ref.t ?? 0.5;
+  const ra = rig.landmarks[a];
+  const rb = rig.landmarks[b];
+  const restBase: V3 = [ra[0] + (rb[0] - ra[0]) * t, ra[1] + (rb[1] - ra[1]) * t, ra[2] + (rb[2] - ra[2]) * t];
+  const pa = model.landmarkNow(a);
+  const pb = model.landmarkNow(b);
+  const seg = t < 0.5 ? sa : sb;
+  const o0 = model.pointNow(seg, restBase);
+  const o1 = model.pointNow(seg, rest);
+  return [pa[0] + (pb[0] - pa[0]) * t + o1[0] - o0[0], pa[1] + (pb[1] - pa[1]) * t + o1[1] - o0[1], pa[2] + (pb[2] - pa[2]) * t + o1[2] - o0[2]];
 }

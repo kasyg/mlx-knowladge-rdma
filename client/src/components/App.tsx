@@ -11,6 +11,8 @@ import { SettingsDialog, HelpDialog, Welcome } from './Dialogs.tsx';
 import { HomeUI } from './HomeUI.tsx';
 import { MobileTabs, Sheet, Toast, LoadingBar, OfflineBanner } from './Chrome.tsx';
 import { useCompact } from './hooks.ts';
+import { FunctionHud } from './FunctionHud.tsx';
+import { IsolationBar } from './IsolationBar.tsx';
 import { onOnlineChange } from '../api/client.ts';
 import { LAYER_IDS, SYSTEM_IDS } from '@shared/types';
 
@@ -35,6 +37,8 @@ export function App() {
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       if (e.key === 'Escape') {
         if (s.welcomeOpen) s.setWelcomeOpen(false);
+        else if (s.demo) s.setDemo(null);
+        else if (s.isolated) s.isolate(null);
         else if (s.panel !== 'none' && s.panel !== 'detail') s.setPanel('none');
         else if (s.selected) s.select(null);
         else if (s.region) s.setRegion(null);
@@ -84,6 +88,8 @@ export function App() {
         </>
       )}
       {view === 'atlas' && <DepthRail />}
+      {view === 'atlas' && <IsolationBar />}
+      {view === 'atlas' && <FunctionHud />}
       <SettingsDialog />
       <HelpDialog />
       <Welcome />

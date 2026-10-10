@@ -5,6 +5,17 @@ import { createNote, deleteNote, updateNote } from '../api/client.ts';
 import { haptic } from '../utils/haptics.ts';
 import { useCompact } from './hooks.ts';
 import type { SpeciesId } from '@shared/types';
+import { connectionsOf } from '../three/muscles.ts';
+import { JOINT_NAMES, type ConnectionRole } from '@shared/anatomy/connections';
+
+/** order and grouping of the connection list */
+const ROLE_ORDER: ConnectionRole[] = ['origin', 'insertion', 'tendon', 'muscle', 'bone', 'articulates', 'originHere', 'insertsHere', 'attached', 'synergist', 'antagonist', 'nerve', 'artery', 'innervates', 'supplies'];
+
+/** which name of a joint matches the label language (Latin by default) */
+function settingsLabelLang(label: (n: { la: string; cs: string; en: string }) => string): 'la' | 'cs' | 'en' {
+  const probe = { la: 'la', cs: 'cs', en: 'en' };
+  return label(probe) as 'la' | 'cs' | 'en';
+}
 
 export function DetailPanel() {
   const selected = useAtlas((s) => s.selected);
@@ -23,6 +34,11 @@ export function DetailPanel() {
   const online = useAtlas((s) => s.online);
   const showToast = useAtlas((s) => s.showToast);
   const compact = useCompact();
+  const isolated = useAtlas((s) => s.isolated);
+  const isolate = useAtlas((s) => s.isolate);
+  const demo = useAtlas((s) => s.demo);
+  const setDemo = useAtlas((s) => s.setDemo);
+  const setHovered = useAtlas((s) => s.setHovered);
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState<number | null>(null);
   const [editText, setEditText] = useState('');
@@ -45,6 +61,20 @@ export function DetailPanel() {
     })
     .filter((v, i, a) => a.indexOf(v) === i);
   const related = m!.instances.filter((i) => i.key !== inst.key && i.group === inst.group && i.regions.some((r) => inst.regions.includes(r)) && (!inst.side || i.side === inst.side || !i.side)).slice(0, 8);
+  const sys = m!.muscles;
+  const conns = sys ? connectionsOf(sys, m!, inst.key) : [];
+  const groups = ROLE_ORDER.map((role) => ({ role, items: conns.filter((c) => c.role === role) })).filter((g) => g.items.length);
+  const mrt = sys?.muscles.get(inst.key);
+  const mech = mrt?.mech;
+  const jointLinks = sys?.graph.joints.get(def.id) ?? [];
+  const goTo = (key: string) => {
+    haptic('select');
+    if (isolated) isolate(key);
+    else {
+      select(key);
+      camera({ type: 'fitStructure', key });
+    }
+  };
   const myNotes = notes.filter((n) => n.structureId === def.id);
   const speciesNote = def.speciesNotes?.[payload.meta.id as SpeciesId];
   const credit = inst.external ? external.find((e) => e.id === inst.external)?.attribution : undefined;
@@ -120,13 +150,64 @@ export function DetailPanel() {
             {credit.license ? ` (${credit.license})` : ''}
           </div>
         )}
-        <div className="row gap">
-          <button className="btn small" onClick={() => { haptic('tap'); camera({ type: 'fitStructure', key: inst.key }); }}>{t('showInModel')}</button>
+        <div className="row gap wrap">
+          {isolated !== inst.key ? (
+            <button className="btn small primary" title={t('isolateHint')} onClick={() => { haptic('select'); isolate(inst.key); }}>{t('isolate')}</button>
+          ) : (
+            <button className="btn small" onClick={() => { haptic('toggle'); isolate(null); }}>{t('exitIsolation')}</button>
+          )}
+          {mrt && (
+            <button className={`btn small${demo === inst.key ? '' : ' primary'}`} onClick={() => { haptic('toggle'); setDemo(demo === inst.key ? null : inst.key); }}>
+              {demo === inst.key ? t('stopFunction') : `▶ ${t('showFunction')}`}
+            </button>
+          )}
+          <button className="btn small ghost" onClick={() => { haptic('tap'); camera({ type: 'fitStructure', key: inst.key }); }}>{t('showInModel')}</button>
           <label className="check">
             <input type="checkbox" checked={isKnown} onChange={(e) => { haptic('toggle'); setKnown(def.id, e.target.checked); }} /> {t('known')}
           </label>
         </div>
-        {related.length > 0 && (
+        {mech && (
+          <dl className="facts">
+            {mech.fibres && (
+              <>
+                <dt>{t('fibres')}</dt>
+                <dd>{t(`fibre_${mech.fibres}` as never)}</dd>
+              </>
+            )}
+            <dt>{t('tendonShare')}</dt>
+            <dd>{Math.round((mech.tendonFraction ?? 0.2) * 100)} %</dd>
+            {jointLinks.length > 0 && (
+              <>
+                <dt>{t('joints')}</dt>
+                <dd>{jointLinks.map((j) => `${JOINT_NAMES.get(j.id)?.[settingsLabelLang(label)] ?? j.id} – ${t(`joint_${j.action}` as never)}`).join('; ')}</dd>
+              </>
+            )}
+          </dl>
+        )}
+        {mech?.stay && <p className="muted small">{t('stayApparatus')}</p>}
+        {groups.length > 0 && (
+          <div className="connections">
+            <h4>{t('connections')}</h4>
+            {groups.map((g) => (
+              <div key={g.role} className="conn-group">
+                <span className="conn-role">{t(`role_${g.role}` as never)}</span>
+                <div className="chips">
+                  {g.items.slice(0, 14).map((c) => {
+                    const ci = m!.byKey.get(c.key);
+                    if (!ci) return null;
+                    return (
+                      <button key={c.key} className={`chip kind-${ci.def.kind}`} onMouseEnter={() => setHovered(c.key)} onMouseLeave={() => setHovered(null)} onClick={() => goTo(c.key)}>
+                        {label(ci.def.names)}
+                        {c.joint && (g.role === 'synergist' || g.role === 'antagonist') ? <small> · {JOINT_NAMES.get(c.joint)?.la.replace('Articulatio ', 'Art. ')}</small> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {related.length > 0 && groups.length === 0 && (
           <div className="related">
             <h4>{t('related')}</h4>
             <div className="chips">

@@ -33,6 +33,8 @@ export class SweepGeometry extends THREE.BufferGeometry {
   readonly opts: Required<Pick<SweepOptions, 'radial' | 'segments' | 'closed' | 'caps' | 'tension'>> & SweepOptions & { aspect: number | ((t: number) => number) };
   curve!: THREE.CatmullRomCurve3;
   length = 0;
+  /** runtime belly thickness factor (muscle physics); the ends keep their radius */
+  radiusScale = 1;
   private ringCount: number;
 
   constructor(opts: SweepOptions) {
@@ -121,7 +123,8 @@ export class SweepGeometry extends THREE.BufferGeometry {
       _prevN.copy(_n);
       hasPrev = true;
       _b.crossVectors(_t, _n).normalize();
-      const r = Math.max(1e-5, radius(t));
+      const belly = this.radiusScale === 1 ? 1 : 1 + (this.radiusScale - 1) * Math.pow(Math.sin(Math.PI * t), 0.8);
+      const r = Math.max(1e-5, radius(t)) * belly;
       const rN = r * (typeof aspect === 'function' ? aspect(t) : aspect);
       for (let j = 0; j < radial; j++) {
         const th = (j / radial) * Math.PI * 2;

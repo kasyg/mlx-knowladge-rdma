@@ -128,7 +128,7 @@ app.get('/api/settings/:deviceId', (req, res) => {
 app.put('/api/settings/:deviceId', (req, res) => {
   const body = req.body;
   if (!body || typeof body !== 'object') return res.status(400).json({ error: 'invalid settings' });
-  const allowed = ['uiLang', 'labelLang', 'haptics', 'reduceMotion', 'labelSize', 'theme', 'animationSpeed', 'showAllLabels'];
+  const allowed = ['uiLang', 'labelLang', 'haptics', 'reduceMotion', 'labelSize', 'theme', 'animationSpeed', 'showAllLabels', 'quality'];
   const clean: Record<string, unknown> = {};
   for (const k of allowed) if (k in body) clean[k] = body[k];
   settingsPut.run(req.params.deviceId, JSON.stringify(clean), new Date().toISOString());
