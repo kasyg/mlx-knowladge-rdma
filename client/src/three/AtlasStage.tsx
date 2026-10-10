@@ -120,7 +120,7 @@ export function AtlasStage() {
       const dimTarget = inRegion ? 0 : g === 'skin' ? 0.35 : 0.65;
       cur.dim += (dimTarget - cur.dim) * k;
       let hiTarget = 0;
-      if (s.selected === inst.key) hiTarget = 1;
+      if (s.selected === inst.key || s.quizHighlight === inst.key) hiTarget = 1;
       else if (s.hovered === inst.key) hiTarget = 0.55;
       else if (roles && limb && inst.limbs.has(limb)) {
         if (inst.def.motion?.some((r) => roles.joints.includes(r.joint) && r.action === roles.action)) hiTarget = 0.6;

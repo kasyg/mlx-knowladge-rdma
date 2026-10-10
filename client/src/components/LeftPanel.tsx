@@ -4,6 +4,8 @@ import { haptic } from '../utils/haptics.ts';
 import { atlasRuntime, limbOfRegion } from '../three/AtlasStage.tsx';
 import { activeRoles, strideAngles } from '../three/motion.ts';
 import { useCompact } from './hooks.ts';
+import { Quiz } from './Quiz.tsx';
+import { useState } from 'react';
 
 function Switch({ checked, onChange, label, hint, tone }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string; tone?: string }) {
   return (
@@ -157,6 +159,17 @@ export function MotionSection() {
   );
 }
 
+export function QuizSection() {
+  const t = useAtlas((s) => s.t);
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="panel-section">
+      <h3>{t('quiz')}</h3>
+      {open ? <Quiz onClose={() => setOpen(false)} /> : <button className="btn small" onClick={() => { haptic('select'); setOpen(true); }}>{t('quizTitle')}</button>}
+    </section>
+  );
+}
+
 export function LeftPanel({ section }: { section?: Panel }) {
   const leftOpen = useAtlas((s) => s.leftOpen);
   const setLeftOpen = useAtlas((s) => s.setLeftOpen);
@@ -171,6 +184,7 @@ export function LeftPanel({ section }: { section?: Panel }) {
           <>
             <SystemsSection />
             {limbOfRegion(region) && <MotionSection />}
+            <QuizSection />
           </>
         )}
       </div>
@@ -187,6 +201,7 @@ export function LeftPanel({ section }: { section?: Panel }) {
           <MotionSection />
           <LayersSection />
           <SystemsSection />
+          <QuizSection />
         </div>
       )}
     </aside>

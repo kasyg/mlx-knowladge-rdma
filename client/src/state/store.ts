@@ -56,6 +56,7 @@ export interface AtlasState {
   known: Set<string>;
   deviceId: string;
   modelVersion: number;
+  quizHighlight: string | null;
 
   t: (k: UiKey) => string;
   label: (names: { la: string; cs: string; en: string }) => string;
@@ -87,6 +88,7 @@ export interface AtlasState {
   setNotes: (n: Note[]) => void;
   setKnown: (structureId: string, known: boolean) => void;
   reloadNotes: () => Promise<void>;
+  setQuizHighlight: (key: string | null) => void;
 }
 
 const autoMode = () => ({ skin: 'auto', muscles: 'auto', tendons: 'auto', cartilage: 'auto', bones: 'auto' }) as Record<LayerId, LayerMode>;
@@ -147,6 +149,7 @@ export const useAtlas = create<AtlasState>((set, get) => ({
   known: new Set(),
   deviceId: deviceId(),
   modelVersion: 0,
+  quizHighlight: null,
 
   t: (k) => UI[get().settings.uiLang][k] ?? k,
   label: (names) => {
@@ -306,6 +309,7 @@ export const useAtlas = create<AtlasState>((set, get) => ({
     const id = get().speciesId;
     if (id) void apiSetProgress(get().deviceId, id, structureId, known);
   },
+  setQuizHighlight: (key) => set({ quizHighlight: key }),
   reloadNotes: async () => {
     const id = get().speciesId;
     if (!id) return;

@@ -85,7 +85,7 @@ export function Overlay() {
           out.push({ key: `region:${id}`, text: name, kind: 'hotspot', anchor: a, priority: farSide && side === farSide ? -1 : 0, side, region: id, active: s.region === id });
         }
       }
-      if (!s.labelsOn) return out;
+      if (!s.labelsOn || s.quizHighlight) return out;
       const max = s.settings.showAllLabels ? 48 : compact ? 8 : 15;
       const cands: { inst: (typeof m.instances)[number]; dist: number }[] = [];
       for (const inst of m.instances) {

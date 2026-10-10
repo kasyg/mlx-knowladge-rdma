@@ -19,6 +19,7 @@ Web aplikace funguje na mobilu, tabletu i počítači (responzivní UI, dotykov�
 - **Detail struktury**: popis, začátek, úpon, funkce, druhové zvláštnosti, související struktury, vlastní poznámky (ukládané na server),
   označení „umím“.
 - **Vyhledávání** ve všech názvech (la/cs/en).
+- **Procvičování**: aplikace zvýrazní strukturu v modelu a student vybírá její název ze čtyř možností; správné odpovědi se ukládají jako „naučené“.
 - **Dvojklik** vrátí kameru na vybranou oblast, **trojklik** navíc obnoví výchozí natočení pohledu.
 - Nastavení: jazyk rozhraní (CZ/EN), jazyk popisků, velikost popisků, světlý/tmavý vzhled, haptika, omezení animací, rychlost animací.
 
